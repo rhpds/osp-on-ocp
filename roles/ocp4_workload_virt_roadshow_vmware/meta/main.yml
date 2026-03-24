@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: ocp4_workload_virt_roadshow_vmware
+  author:
+  - Alberto Gonzalez Rodriguez <josegonz@redhat.com>
+  - Judd Maltin <jmaltin@redhat.com>
+  description: |
+    Sets up VMware vCenter resources for OpenShift Virtualization roadshow labs.
+    Creates a vCenter user, folder, and VMs from content library templates.
+    Single-user mode only.
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.9"
+  platforms: []
+  galaxy_tags:
+  - ocp
+  - openshift
+  - vmware
+  - vcenter
+  - virtualization
+dependencies: []

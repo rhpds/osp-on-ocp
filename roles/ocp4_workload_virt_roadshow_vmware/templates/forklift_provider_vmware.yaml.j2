@@ -1,0 +1,15 @@
+---
+apiVersion: forklift.konveyor.io/v1beta1
+kind: Provider
+metadata:
+  name: vmware
+  namespace: openshift-mtv
+spec:
+  type: vsphere
+  url: https://{{ vcenter_hostname }}/sdk
+  settings:
+    sdkEndpoint: vcenter
+    vddkInitImage: "{{ ocp4_workload_virt_roadshow_vmware_vddk_registry }}"
+  secret:
+    name: vmware-credentials
+    namespace: openshift-mtv

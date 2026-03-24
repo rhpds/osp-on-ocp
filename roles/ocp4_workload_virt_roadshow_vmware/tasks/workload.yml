@@ -1,0 +1,42 @@
+---
+- name: Set up prerequisites
+  ansible.builtin.include_tasks: vcenter_setup_prerequisites.yml
+
+- name: Grant permissions to existing pool VMs or create VMs if they don't exist
+  when: ocp4_workload_virt_roadshow_vmware_use_pool | default(true) | bool
+  ansible.builtin.include_tasks: vcenter_setup_pool_user.yml
+
+- name: Create VMs and assign permissions (no pool)
+  when: not ocp4_workload_virt_roadshow_vmware_use_pool | default(true) | bool
+  block:
+  - name: Create folder and VMs in vCenter
+    vars:
+      _ocp4_workload_virt_roadshow_vmware_vcenter_vmname_suffix: "-{{ guid }}"
+      _ocp4_workload_virt_roadshow_vmware_vcenter_folder: "{{ ocp4_workload_virt_roadshow_vmware_vcenter_folder }}"
+    ansible.builtin.include_tasks: vcenter_setup_create_folder_and_vms.yml
+
+  - name: Create user in AD and assign permissions on vSphere
+    vars:
+      _ocp4_workload_virt_roadshow_vmware_vcenter_user: "{{ ocp4_workload_virt_roadshow_vmware_vcenter_user }}"
+      _ocp4_workload_virt_roadshow_vmware_vcenter_folder: "{{ ocp4_workload_virt_roadshow_vmware_vcenter_folder }}"
+    ansible.builtin.include_tasks: vcenter_setup_user.yml
+
+- name: Set up VDDK and MTV provider
+  when: ocp4_workload_virt_roadshow_vmware_enable_mtv | bool
+  block:
+  - name: Set up VDDK
+    ansible.builtin.include_tasks: vcenter_setup_vddk.yml
+
+  - name: Set up MTV provider for VMware
+    ansible.builtin.include_tasks: vcenter_setup_mtv_provider.yml
+
+- name: Set agnosticd user info data for vCenter
+  agnosticd.core.agnosticd_user_info:
+    data:
+      vcenter_user: "{{ ocp4_workload_virt_roadshow_vmware_vcenter_user }}"
+      vcenter_password: "{{ _ocp4_workload_virt_roadshow_vmware_vcenter_user_password }}"
+      vcenter_full_user: "{{ ocp4_workload_virt_roadshow_vmware_vcenter_user }}@{{ vcenter_domain }}"
+      vcenter_console: "{{ vcenter_hostname }}"
+      vcenter_domain: "{{ vcenter_domain }}"
+      vcenter_datastore: "{{ _ocp4_workload_virt_roadshow_vmware_datastore }}"
+      guid: "{{ guid }}"

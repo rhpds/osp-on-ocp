@@ -1,0 +1,18 @@
+---
+# Cleanup on vCenter. OpenShift resources will not be cleaned up by this workload.
+- name: Set up prerequisites
+  ansible.builtin.include_tasks: vcenter_setup_prerequisites.yml
+
+- name: Remove user
+  vars:
+    _ocp4_workload_virt_roadshow_vmware_vcenter_user: "{{ ocp4_workload_virt_roadshow_vmware_vcenter_user }}"
+  ansible.builtin.include_tasks: vcenter_remove_user.yml
+
+- name: Remove user from pool VMs
+  when: ocp4_workload_virt_roadshow_vmware_use_pool | default(true) | bool
+  ansible.builtin.include_tasks: vcenter_remove_pool_user.yml
+
+- name: Remove VMs and folder
+  vars:
+    _ocp4_workload_virt_roadshow_vmware_vcenter_folder: "{{ ocp4_workload_virt_roadshow_vmware_vcenter_folder }}"
+  ansible.builtin.include_tasks: vcenter_remove_vms.yml
