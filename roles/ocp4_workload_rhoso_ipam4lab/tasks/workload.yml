@@ -64,7 +64,7 @@
         Status code: {{ r_ipam_allocation.status | default('N/A') }}
 
 - name: Store IP allocation data for other workloads
-  agnosticd_user_info:
+  agnosticd.core.agnosticd_user_info:
     data:
       rhoso_cluster_name: "{{ ocp4_workload_rhoso_ipam4lab_cluster_name }}"
       rhoso_ipam_allocation_name: "{{ _ocp4_workload_rhoso_ipam4lab_allocation_name }}"
@@ -80,7 +80,7 @@
       rhoso_conversion_host_ip: "{{ _ocp4_workload_rhoso_ipam4lab_conversion_host_ip }}"
 
 - name: Report IP allocation to user
-  agnosticd_user_info:
+  agnosticd.core.agnosticd_user_info:
     msg:
     - ""
     - "RHOSO External IP Allocation Details:"
