@@ -1,60 +1,37 @@
 ---
-- name: Get Workloads parent folder
-  ansible.builtin.uri:
-    url: "https://{{ vcenter_hostname }}/api/vcenter/folder?type=VIRTUAL_MACHINE&names=Workloads"
-    method: GET
-    headers:
-      Content-Type: "application/json"
-      vmware-api-session-id: "{{ _ocp4_workload_virt_roadshow_vmware_token }}"
-    validate_certs: "{{ ocp4_workload_virt_roadshow_vmware_enable_cert_validation | bool }}"
-  register: r_parent_folder
-
-- name: Set parent folder ID
-  ansible.builtin.set_fact:
-    _ocp4_workload_virt_roadshow_vmware_parent_folder_id: "{{ r_parent_folder.json[0].folder }}"
-
-- name: Check if subfolder already exists
-  ansible.builtin.uri:
-    url: "https://{{ vcenter_hostname }}/api/vcenter/folder?type=VIRTUAL_MACHINE&names={{ _ocp4_workload_virt_roadshow_vmware_vcenter_folder }}&parent_folders={{ _ocp4_workload_virt_roadshow_vmware_parent_folder_id }}"
-    method: GET
-    headers:
-      Content-Type: "application/json"
-      vmware-api-session-id: "{{ _ocp4_workload_virt_roadshow_vmware_token }}"
-    validate_certs: "{{ ocp4_workload_virt_roadshow_vmware_enable_cert_validation | bool }}"
-  register: r_existing_folder
-
-- name: Create subfolder in vCenter
-  when: r_existing_folder.json | length == 0
-  ansible.builtin.uri:
-    url: "https://{{ vcenter_hostname }}/api/vcenter/folder"
-    method: POST
-    headers:
-      Content-Type: "application/json"
-      vmware-api-session-id: "{{ _ocp4_workload_virt_roadshow_vmware_token }}"
-    body_format: json
-    body:
-      name: "{{ _ocp4_workload_virt_roadshow_vmware_vcenter_folder }}"
-      parent_folder: "{{ _ocp4_workload_virt_roadshow_vmware_parent_folder_id }}"
-    validate_certs: "{{ ocp4_workload_virt_roadshow_vmware_enable_cert_validation | bool }}"
-    status_code: 201
-  register: r_create_folder
+- name: Create a folder in vCenter
+  agnosticd.osp_on_ocp.vcenter_manage_subfolder:
+    host: "{{ vcenter_hostname }}"
+    login: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    folder_name: "{{ _ocp4_workload_virt_roadshow_vmware_vcenter_folder }}"
+    parent_folder_name: "Workloads"
+    datacenter_name: "{{ vcenter_datacenter }}"
+    state: present
+  register: r_vcenter_folder
+  until: r_vcenter_folder is success
   retries: 10
   delay: 15
-  until: r_create_folder is success
+
+- name: Debug r_vcenter_folder
+  ansible.builtin.debug:
+    msg: "vcenter folder: {{ r_vcenter_folder }}"
 
 - name: Get folder information
-  ansible.builtin.uri:
-    url: "https://{{ vcenter_hostname }}/api/vcenter/folder?type=VIRTUAL_MACHINE&names={{ _ocp4_workload_virt_roadshow_vmware_vcenter_folder }}&parent_folders={{ _ocp4_workload_virt_roadshow_vmware_parent_folder_id }}"
-    method: GET
-    headers:
-      Content-Type: "application/json"
-      vmware-api-session-id: "{{ _ocp4_workload_virt_roadshow_vmware_token }}"
-    validate_certs: "{{ ocp4_workload_virt_roadshow_vmware_enable_cert_validation | bool }}"
+  environment:
+    VMWARE_HOST: "{{ vcenter_hostname }}"
+    VMWARE_USER: "{{ vcenter_username }}"
+    VMWARE_PASSWORD: "{{ vcenter_password }}"
+    VMWARE_VALIDATE_CERTS: "{{ ocp4_workload_virt_roadshow_vmware_enable_cert_validation }}"
+  vmware.vmware_rest.vcenter_folder_info:
+    type: VIRTUAL_MACHINE
+    names:
+      - "{{ _ocp4_workload_virt_roadshow_vmware_vcenter_folder }}"
   register: r_folder_info
 
 - name: Set folder ID fact
   ansible.builtin.set_fact:
-    _ocp4_workload_virt_roadshow_vmware_vcenter_folder_id: "{{ r_folder_info.json[0].folder }}"
+    _ocp4_workload_virt_roadshow_vmware_vcenter_folder_id: "{{ r_folder_info.value[0].folder }}"
 
 - name: Create VMs
   environment:
