@@ -48,10 +48,15 @@
         datastore: "{{ _ocp4_workload_virt_roadshow_vmware_datastore_id }}"
       powered_on: false
     validate_certs: "{{ ocp4_workload_virt_roadshow_vmware_enable_cert_validation | bool }}"
-    status_code: 200
+    status_code:
+      - 200
+      - 400
   retries: 5
   delay: 10
   until: r_vmc_instance is success
+  failed_when:
+    - r_vmc_instance.status == 400
+    - r_vmc_instance.json.error_type | default('') != 'ALREADY_EXISTS'
   loop: "{{ ocp4_workload_virt_roadshow_vmware_vms }}"
   loop_control:
     loop_var: vm
