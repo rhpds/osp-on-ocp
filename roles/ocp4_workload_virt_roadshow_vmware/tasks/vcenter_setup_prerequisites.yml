@@ -51,8 +51,8 @@
     ansible.builtin.set_fact:
       _ocp4_workload_virt_roadshow_vmware_vcenter_user_password: >-
         {{- lookup('password', '/dev/null length=1 chars=ascii_uppercase') -}}
-        {{- lookup('password', '/dev/null length=1 chars=ascii_lowecase') -}}
-        {{- lookup('password', '/dev/null length={{ ocp4_workload_virt_roadshow_vmware_vcenter_user_password_length }}') -}}
+        {{- lookup('password', '/dev/null length=1 chars=ascii_lowercase') -}}
+        {{- lookup('password', '/dev/null length=' + ocp4_workload_virt_roadshow_vmware_vcenter_user_password_length | string) -}}
         {{- lookup('password', '/dev/null length=1 chars=digits') -}}
 
   - name: Debug vCenter user password
