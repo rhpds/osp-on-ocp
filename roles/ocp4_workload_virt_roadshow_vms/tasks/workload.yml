@@ -11,13 +11,21 @@
   loop_control:
     loop_var: resource
 
-- name: Create services and routes
+# service_database only exists when roadshow_setup is false (student creates it otherwise)
+- name: Create database service
+  when:
+  - ocp4_workload_virt_roadshow_vms_imported_configure_svc_and_route | bool
+  - not ocp4_workload_virt_roadshow_vms_roadshow_setup | bool
+  kubernetes.core.k8s:
+    state: present
+    definition: "{{ lookup('template', 'service_database.yaml.j2') | from_yaml }}"
+
+- name: Create webapp services and routes
   when: ocp4_workload_virt_roadshow_vms_imported_configure_svc_and_route | bool
   kubernetes.core.k8s:
     state: present
     definition: "{{ lookup('template', resource) | from_yaml }}"
   loop:
-  - service_database.yaml.j2
   - service_webapp.yaml.j2
   - route_webapp.yaml.j2
   loop_control:
