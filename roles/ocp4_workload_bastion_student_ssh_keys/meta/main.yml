@@ -4,10 +4,10 @@ galaxy_info:
   author:
   - Judd Maltin <jmaltin@redhat.com>
   description: |
-    Copies the bastion SSH private key, public key, and SSH config into the
-    student user's ~/.ssh/ directory. This bridges the gap between the
-    agnosticd-v2 bastion role (which only sets up keys for the ansible_user)
-    and student users who need SSH access to other VMs in the environment.
+    Sets up SSH access between the bastion and all isolated instances.
+    Copies SSH keys and a generated SSH config to the student user on the
+    bastion, and deploys the bastion public key to authorized_keys on each
+    isolated instance (compute01-03, nfsserver, allinone).
   license: GPL-2.0-or-later
   min_ansible_version: "2.9"
   platforms: []

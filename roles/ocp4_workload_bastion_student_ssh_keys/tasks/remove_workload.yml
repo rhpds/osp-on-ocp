@@ -1,4 +1,21 @@
 ---
+- name: Read bastion SSH public key
+  delegate_to: bastion
+  ansible.builtin.slurp:
+    src: "{{ ocp4_workload_bastion_student_ssh_keys_public_key }}"
+  register: _bastion_ssh_pubkey
+  ignore_errors: true
+
+- name: Remove bastion SSH public key from isolated instances
+  delegate_to: "{{ item }}"
+  become: true
+  ansible.posix.authorized_key:
+    user: "{{ ocp4_workload_bastion_student_ssh_keys_remote_user }}"
+    key: "{{ _bastion_ssh_pubkey.content | b64decode }}"
+    state: absent
+  loop: "{{ ocp4_workload_bastion_student_ssh_keys_target_hosts }}"
+  when: _bastion_ssh_pubkey is succeeded
+
 - name: Remove SSH keys from student user .ssh directory
   delegate_to: bastion
   become: true

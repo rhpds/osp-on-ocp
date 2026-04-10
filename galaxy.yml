@@ -22,7 +22,8 @@ tags:
 - rhoso
 - openshift
 
-dependencies: {}
+dependencies:
+  ansible.posix: ">=1.0.0"
 
 repository: https://github.com/agnosticd/osp-on-ocp
 documentation: https://github.com/agnosticd/osp-on-ocp
