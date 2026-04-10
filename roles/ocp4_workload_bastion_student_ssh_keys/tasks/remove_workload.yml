@@ -1,6 +1,7 @@
 ---
 - name: Read bastion SSH public key
   delegate_to: bastion
+  become: true
   ansible.builtin.slurp:
     src: "{{ ocp4_workload_bastion_student_ssh_keys_public_key }}"
   register: _bastion_ssh_pubkey
