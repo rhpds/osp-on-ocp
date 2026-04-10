@@ -48,15 +48,13 @@
     group: "{{ ocp4_workload_bastion_student_ssh_keys_group }}"
     mode: u=rw,go=
 
-- name: Add isolated instance hostnames to bastion /etc/hosts
-  delegate_to: bastion
-  become: true
-  ansible.builtin.lineinfile:
-    path: /etc/hosts
-    regexp: '.*\s{{ item }}$'
-    line: "{{ hostvars[item].ansible_host | default(hostvars[item].private_ip_address) }} {{ item }}"
-    state: present
-  loop: "{{ ocp4_workload_bastion_student_ssh_keys_target_hosts }}"
+- name: Populate /etc/hosts on each host
+  ansible.builtin.include_tasks: populate_etc_hosts.yml
+  loop: "{{ _all_hosts }}"
+  loop_control:
+    loop_var: _etc_hosts_target
+  vars:
+    _all_hosts: "{{ ['bastion'] + ocp4_workload_bastion_student_ssh_keys_target_hosts }}"
 
 - name: Deploy bastion SSH public key to isolated instances
   delegate_to: "{{ item }}"
@@ -67,7 +65,4 @@
     state: present
   loop: "{{ ocp4_workload_bastion_student_ssh_keys_target_hosts }}"
   vars:
-    ansible_ssh_common_args: >-
-      -o StrictHostKeyChecking=no
-      -o UserKnownHostsFile=/dev/null
-      -o ProxyJump={{ hostvars['bastion'].ansible_host }}
+    ansible_ssh_common_args: "{{ _bastion_ssh_proxy_args }}"

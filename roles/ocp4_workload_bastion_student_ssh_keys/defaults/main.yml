@@ -13,3 +13,9 @@ ocp4_workload_bastion_student_ssh_keys_remote_user: "{{ remote_user | default('c
 
 # Instances to set up SSH access to (from agnosticv 'isolated' group)
 ocp4_workload_bastion_student_ssh_keys_target_hosts: "{{ groups['isolated'] | default([]) }}"
+
+# SSH proxy args for reaching isolated hosts through bastion (used by controller)
+_bastion_ssh_proxy_args: >-
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o ProxyJump={{ hostvars['bastion'].ansible_host }}

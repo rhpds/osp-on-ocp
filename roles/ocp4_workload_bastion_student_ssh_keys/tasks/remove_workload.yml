@@ -16,6 +16,8 @@
     state: absent
   loop: "{{ ocp4_workload_bastion_student_ssh_keys_target_hosts }}"
   when: _bastion_ssh_pubkey is succeeded
+  vars:
+    ansible_ssh_common_args: "{{ _bastion_ssh_proxy_args }}"
 
 - name: Remove SSH keys from student user .ssh directory
   delegate_to: bastion

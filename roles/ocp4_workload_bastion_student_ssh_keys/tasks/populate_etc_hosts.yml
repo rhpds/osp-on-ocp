@@ -1,0 +1,18 @@
+---
+# Populates /etc/hosts on _etc_hosts_target with entries for all other hosts.
+# Called from workload.yml with loop_var: _etc_hosts_target
+
+- name: "Add host entries to /etc/hosts on {{ _etc_hosts_target }}"
+  delegate_to: "{{ _etc_hosts_target }}"
+  become: true
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '.*\s{{ item }}\b'
+    line: "{{ hostvars[item].private_ip_address | default(hostvars[item].ansible_host) }} {{ item }}"
+    state: present
+  loop: "{{ _all_hosts | difference([_etc_hosts_target]) }}"
+  vars:
+    ansible_ssh_common_args: >-
+      {{ _bastion_ssh_proxy_args
+         if _etc_hosts_target != 'bastion'
+         else '' }}
