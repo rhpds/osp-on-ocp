@@ -1,61 +1,90 @@
 ---
+# All NFS tasks run via the bastion (delegate_to: bastion + ssh to nfsserver)
+# because the EE container cannot resolve cluster-internal hostnames.
+# The bastion has cluster DNS and direct network access to the nfsserver VM.
+
 - name: Create NFS directories
-  ansible.builtin.raw: >-
-    mkdir -p
-    {{ ocp4_workload_rhoso_deployment_nfs_cinder_path }}
-    {{ ocp4_workload_rhoso_deployment_nfs_glance_path }}
-    {{ ocp4_workload_rhoso_deployment_nfs_aap_path }}
-    && chmod 0777
-    {{ ocp4_workload_rhoso_deployment_nfs_cinder_path }}
-    {{ ocp4_workload_rhoso_deployment_nfs_glance_path }}
-    {{ ocp4_workload_rhoso_deployment_nfs_aap_path }}
-  delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  become: true
+  ansible.builtin.command:
+    cmd: >-
+      ssh -i {{ ocp4_workload_rhoso_deployment_nfs_ssh_key }}
+      -o StrictHostKeyChecking=no
+      {{ ocp4_workload_rhoso_deployment_nfs_ssh_user }}@{{ ocp4_workload_rhoso_deployment_nfs_host }}
+      "sudo mkdir -p
+      {{ ocp4_workload_rhoso_deployment_nfs_cinder_path }}
+      {{ ocp4_workload_rhoso_deployment_nfs_glance_path }}
+      {{ ocp4_workload_rhoso_deployment_nfs_aap_path }}
+      && sudo chmod 0777
+      {{ ocp4_workload_rhoso_deployment_nfs_cinder_path }}
+      {{ ocp4_workload_rhoso_deployment_nfs_glance_path }}
+      {{ ocp4_workload_rhoso_deployment_nfs_aap_path }}"
+  delegate_to: bastion
   changed_when: true
 
 - name: Configure NFS exports
-  ansible.builtin.raw: |
-    cat > /etc/exports << 'EXPORTS'
-    {{ ocp4_workload_rhoso_deployment_nfs_cinder_path }} *(rw,sync,no_root_squash)
-    {{ ocp4_workload_rhoso_deployment_nfs_glance_path }} *(rw,sync,no_root_squash)
-    {{ ocp4_workload_rhoso_deployment_nfs_aap_path }} *(rw,sync,no_root_squash)
-    EXPORTS
-  delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  become: true
+  ansible.builtin.shell:
+    cmd: |
+      ssh -i {{ ocp4_workload_rhoso_deployment_nfs_ssh_key }} \
+        -o StrictHostKeyChecking=no \
+        {{ ocp4_workload_rhoso_deployment_nfs_ssh_user }}@{{ ocp4_workload_rhoso_deployment_nfs_host }} \
+        "sudo tee /etc/exports > /dev/null << 'EXPORTS'
+      {{ ocp4_workload_rhoso_deployment_nfs_cinder_path }} *(rw,sync,no_root_squash)
+      {{ ocp4_workload_rhoso_deployment_nfs_glance_path }} *(rw,sync,no_root_squash)
+      {{ ocp4_workload_rhoso_deployment_nfs_aap_path }} *(rw,sync,no_root_squash)
+      EXPORTS
+      && sudo systemctl restart nfs-server"
+  delegate_to: bastion
   changed_when: true
-  notify: Restart nfs-server
 
 - name: Configure static network interface on NFS server
-  ansible.builtin.raw: >-
-    nmcli con show "static-eth1" 2>/dev/null ||
-    nmcli con add con-name "static-eth1" ifname eth1
-    type ethernet ip4 {{ ocp4_workload_rhoso_deployment_nfs_server_ip }}/24
-  delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  become: true
+  ansible.builtin.command:
+    cmd: >-
+      ssh -i {{ ocp4_workload_rhoso_deployment_nfs_ssh_key }}
+      -o StrictHostKeyChecking=no
+      {{ ocp4_workload_rhoso_deployment_nfs_ssh_user }}@{{ ocp4_workload_rhoso_deployment_nfs_host }}
+      "sudo nmcli con show 'static-eth1' 2>/dev/null ||
+       sudo nmcli con add con-name 'static-eth1' ifname eth1
+       type ethernet ip4 {{ ocp4_workload_rhoso_deployment_nfs_server_ip }}/24"
+  delegate_to: bastion
   changed_when: true
 
 - name: Activate static network connection on NFS server
-  ansible.builtin.raw: nmcli con up "static-eth1"
-  delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  become: true
+  ansible.builtin.command:
+    cmd: >-
+      ssh -i {{ ocp4_workload_rhoso_deployment_nfs_ssh_key }}
+      -o StrictHostKeyChecking=no
+      {{ ocp4_workload_rhoso_deployment_nfs_ssh_user }}@{{ ocp4_workload_rhoso_deployment_nfs_host }}
+      "sudo nmcli con up 'static-eth1'"
+  delegate_to: bastion
   changed_when: true
 
 - name: Start and enable NFS server
-  ansible.builtin.raw: systemctl enable --now nfs-server
-  delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  become: true
+  ansible.builtin.command:
+    cmd: >-
+      ssh -i {{ ocp4_workload_rhoso_deployment_nfs_ssh_key }}
+      -o StrictHostKeyChecking=no
+      {{ ocp4_workload_rhoso_deployment_nfs_ssh_user }}@{{ ocp4_workload_rhoso_deployment_nfs_host }}
+      "sudo systemctl enable --now nfs-server"
+  delegate_to: bastion
   changed_when: true
 
 - name: Export NFS shares
-  ansible.builtin.raw: exportfs -ra
-  delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  become: true
+  ansible.builtin.command:
+    cmd: >-
+      ssh -i {{ ocp4_workload_rhoso_deployment_nfs_ssh_key }}
+      -o StrictHostKeyChecking=no
+      {{ ocp4_workload_rhoso_deployment_nfs_ssh_user }}@{{ ocp4_workload_rhoso_deployment_nfs_host }}
+      "sudo exportfs -ra"
+  delegate_to: bastion
   changed_when: true
 
 - name: Verify NFS exports
-  ansible.builtin.raw: exportfs -v
-  delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  become: true
+  ansible.builtin.command:
+    cmd: >-
+      ssh -i {{ ocp4_workload_rhoso_deployment_nfs_ssh_key }}
+      -o StrictHostKeyChecking=no
+      {{ ocp4_workload_rhoso_deployment_nfs_ssh_user }}@{{ ocp4_workload_rhoso_deployment_nfs_host }}
+      "sudo exportfs -v"
+  delegate_to: bastion
   register: _ocp4_workload_rhoso_deployment_nfs_exports
   changed_when: false
 

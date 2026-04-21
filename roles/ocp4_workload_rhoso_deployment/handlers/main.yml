@@ -1,5 +1,7 @@
 ---
+# Handler is a no-op since NFS restart is now handled inline in nfs_server.yml
+# via SSH through the bastion. Kept for backwards compatibility.
 - name: Restart nfs-server
-  ansible.builtin.raw: systemctl restart nfs-server
-  delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  become: true
+  ansible.builtin.debug:
+    msg: "NFS server restart handled inline via bastion SSH."
+  delegate_to: bastion
