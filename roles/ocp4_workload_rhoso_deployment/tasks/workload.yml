@@ -1,4 +1,7 @@
 ---
+- name: Set up bastion ProxyCommand for isolated VM connections
+  ansible.builtin.include_tasks: setup_hosts.yml
+
 - name: Prerequisites — install NMState, MetalLB, verify cert-manager
   ansible.builtin.include_tasks: prerequisites.yml
   when: ocp4_workload_rhoso_deployment_phase_prerequisites | bool
