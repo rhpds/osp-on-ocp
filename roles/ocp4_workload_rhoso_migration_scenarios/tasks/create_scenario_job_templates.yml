@@ -1,0 +1,40 @@
+---
+- name: Get home directory
+  ansible.builtin.shell: echo $HOME
+  register: _ocp4_workload_migration_scenarios_home
+  changed_when: false
+  delegate_to: bastion
+
+- name: Check if migration configuration file exists
+  ansible.builtin.stat:
+    path: "{{ _ocp4_workload_migration_scenarios_home.stdout }}/{{ ocp4_workload_rhoso_migration_scenarios_config_dir }}/os_migrate_for_aap.yaml"
+  register: _ocp4_workload_migration_scenarios_config_file
+  delegate_to: bastion
+
+- name: Fail if migration configuration is missing
+  ansible.builtin.fail:
+    msg: >-
+      Migration configuration file not found at
+      {{ _ocp4_workload_migration_scenarios_home.stdout }}/{{ ocp4_workload_rhoso_migration_scenarios_config_dir }}/os_migrate_for_aap.yaml.
+      Run the ocp4_workload_rhoso_migration_toolkit_aap_setup role first.
+  when: not _ocp4_workload_migration_scenarios_config_file.stat.exists
+
+- name: Read migration configuration file
+  ansible.builtin.slurp:
+    src: "{{ _ocp4_workload_migration_scenarios_home.stdout }}/{{ ocp4_workload_rhoso_migration_scenarios_config_dir }}/os_migrate_for_aap.yaml"
+  register: _ocp4_workload_migration_scenarios_config_content
+  delegate_to: bastion
+
+- name: Parse migration configuration
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_scenarios_extra_vars: "{{ _ocp4_workload_migration_scenarios_config_content.content | b64decode | from_yaml }}"
+  delegate_to: bastion
+
+- name: Deploy each migration scenario
+  ansible.builtin.include_tasks: "scenarios/{{ scenario_item }}.yml"
+  loop: "{{ ocp4_workload_rhoso_migration_scenarios_list | default([]) }}"
+  loop_control:
+    loop_var: scenario_item
+  when:
+  - ocp4_workload_rhoso_migration_scenarios_list is defined
+  - ocp4_workload_rhoso_migration_scenarios_list | length > 0

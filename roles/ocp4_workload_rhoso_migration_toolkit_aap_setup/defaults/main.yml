@@ -1,0 +1,89 @@
+---
+# ============================================================================
+# Phase toggles — set any to false to skip that phase
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_conversion_host: true
+ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_install_aap: true
+ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_ansible_builder: true
+ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_configure_migration: true
+ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_configure_aap_api: true
+
+# ============================================================================
+# Lab environment
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_guid: "{{ guid }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/bastion_' ~ guid) }}"
+
+# ============================================================================
+# AAP configuration
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace: "aap"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_channel: "stable-2.5"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_instance_name: "aap"
+
+# ============================================================================
+# Ansible Builder / Execution Environment
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir: "ansible-builder-workspace"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_name: "rhospvmt-ee"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_tag: "latest"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_push_to_aap_registry: true
+
+# Red Hat Automation Hub token (optional, for authenticated collection downloads)
+ocp4_workload_rhoso_migration_toolkit_aap_setup_automation_hub_token: ""
+
+# ============================================================================
+# Migration configuration
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir: "os-migrate-env"
+
+# VMware Migration Toolkit Git project
+ocp4_workload_rhoso_migration_toolkit_aap_setup_scm_url: "https://github.com/os-migrate/vmware-migration-kit"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_scm_branch: "stable"
+
+# VMs to migrate
+ocp4_workload_rhoso_migration_toolkit_aap_setup_vms_to_migrate:
+- "haproxy-{{ guid }}"
+
+# ============================================================================
+# Conversion host
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip: "{{ rhoso_conversion_host_ip | default('') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_gateway: "{{ conversion_host_gateway | default('192.168.0.1') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_public_cidr: "{{ conversion_host_public_cidr | default('192.168.0.0/16') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_private_cidr: "{{ conversion_host_private_cidr | default('10.0.0.0/24') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_dns: "{{ conversion_host_dns | default('8.8.8.8') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_public_net_start: "{{ rhoso_public_net_start | default('') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_public_net_end: "{{ rhoso_public_net_end | default('') }}"
+
+# ============================================================================
+# NFS server (AAP storage)
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_nfs_server_ip: "172.18.0.13"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_nfs_aap_path: "/nfs/aap"
+
+# ============================================================================
+# OpenStack namespaces
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace: "openstack"
+
+# ============================================================================
+# Credentials
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_registry_username: "{{ ocp4_workload_rhoso_deployment_registry_username | default('') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_registry_password: "{{ ocp4_workload_rhoso_deployment_registry_password | default('') }}"
+
+# ============================================================================
+# VMware credentials (provided via inventory or extra vars)
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_vcenter_hostname: "{{ vcenter_hostname | default('') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_vcenter_username: "{{ vcenter_full_user | default('') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_vcenter_password: "{{ vcenter_password | default('') }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_vcenter_datacenter: "{{ vcenter_datacenter | default('') }}"
+
+# ============================================================================
+# Timeouts
+# ============================================================================
+ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_pod_wait_retries: 120
+ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_pod_wait_delay: 10
+ocp4_workload_rhoso_migration_toolkit_aap_setup_ssh_wait_timeout: 300

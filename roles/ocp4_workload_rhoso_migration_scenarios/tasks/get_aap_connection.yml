@@ -1,0 +1,67 @@
+---
+- name: Get AAP admin password from secret
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ ocp4_workload_rhoso_migration_scenarios_aap_instance_name }}-admin-password"
+    namespace: "{{ ocp4_workload_rhoso_migration_scenarios_aap_namespace }}"
+  register: _ocp4_workload_migration_scenarios_admin_secret
+  delegate_to: bastion
+
+- name: Decode AAP admin password
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_scenarios_admin_password: "{{ _ocp4_workload_migration_scenarios_admin_secret.resources[0].data.password | b64decode }}"
+  when: _ocp4_workload_migration_scenarios_admin_secret.resources | length > 0
+  delegate_to: bastion
+
+- name: Get AAP routes
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: "{{ ocp4_workload_rhoso_migration_scenarios_aap_namespace }}"
+  register: _ocp4_workload_migration_scenarios_routes
+  delegate_to: bastion
+
+- name: Extract AAP Controller URL
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_scenarios_controller_url: >-
+      https://{{ (_ocp4_workload_migration_scenarios_routes.resources
+        | selectattr('metadata.name', 'match', '.*controller.*')
+        | list | first).spec.host }}
+  when: _ocp4_workload_migration_scenarios_routes.resources | length > 0
+  delegate_to: bastion
+
+- name: Extract AAP Gateway URL
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_scenarios_gateway_url: >-
+      https://{{ (_ocp4_workload_migration_scenarios_routes.resources
+        | selectattr('metadata.name', 'equalto', ocp4_workload_rhoso_migration_scenarios_aap_instance_name)
+        | list | first).spec.host }}
+  when: _ocp4_workload_migration_scenarios_routes.resources | length > 0
+  delegate_to: bastion
+
+- name: Wait for AAP Controller API to be ready
+  ansible.builtin.uri:
+    url: "{{ _ocp4_workload_migration_scenarios_controller_url }}/api/v2/ping/"
+    method: GET
+    validate_certs: false
+    status_code: 200
+  register: _ocp4_workload_migration_scenarios_ping
+  until: _ocp4_workload_migration_scenarios_ping.status == 200
+  retries: "{{ ocp4_workload_rhoso_migration_scenarios_aap_api_retries }}"
+  delay: "{{ ocp4_workload_rhoso_migration_scenarios_aap_api_delay }}"
+  delegate_to: bastion
+
+- name: Create OAuth2 token via awx-manage
+  ansible.builtin.shell: |
+    oc exec -n {{ ocp4_workload_rhoso_migration_scenarios_aap_namespace }} \
+      deployment/{{ ocp4_workload_rhoso_migration_scenarios_aap_instance_name }}-controller-web -- \
+      awx-manage create_oauth2_token --user admin
+  register: _ocp4_workload_migration_scenarios_token_result
+  changed_when: true
+  delegate_to: bastion
+
+- name: Set API token
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_scenarios_api_token: "{{ _ocp4_workload_migration_scenarios_token_result.stdout | trim }}"
+  delegate_to: bastion

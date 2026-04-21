@@ -1,0 +1,111 @@
+---
+- name: Delete OpenStack Data Plane Deployment
+  kubernetes.core.k8s:
+    api_version: dataplane.openstack.org/v1beta1
+    kind: OpenStackDataPlaneDeployment
+    name: openstack-compute01
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete OpenStack Data Plane NodeSet
+  kubernetes.core.k8s:
+    api_version: dataplane.openstack.org/v1beta1
+    kind: OpenStackDataPlaneNodeSet
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete OpenStack Control Plane
+  kubernetes.core.k8s:
+    api_version: core.openstack.org/v1beta1
+    kind: OpenStackControlPlane
+    name: openstack-control-plane
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete OpenStack secrets
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Secret
+    name: "{{ item }}"
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    state: absent
+  loop:
+  - osp-secret
+  - libvirt-secret
+  - cinder-nfs-config
+  - dataplane-ansible-ssh-private-key-secret
+  - nova-migration-ssh-key
+  - subscription-manager
+  - redhat-registry
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete openstack namespace
+  kubernetes.core.k8s:
+    name: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete openstack-operators namespace
+  kubernetes.core.k8s:
+    name: "{{ ocp4_workload_rhoso_deployment_openstack_operators_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete MetalLB instance
+  kubernetes.core.k8s:
+    api_version: metallb.io/v1beta1
+    kind: MetalLB
+    name: metallb
+    namespace: metallb-system
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete NMState instance
+  kubernetes.core.k8s:
+    api_version: nmstate.io/v1
+    kind: NMState
+    name: nmstate
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete NFS PersistentVolume and StorageClass
+  kubernetes.core.k8s:
+    api_version: "{{ item.api_version }}"
+    kind: "{{ item.kind }}"
+    name: "{{ item.name }}"
+    state: absent
+  loop:
+  - api_version: v1
+    kind: PersistentVolume
+    name: nfs-pv1
+  - api_version: storage.k8s.io/v1
+    kind: StorageClass
+    name: nfs
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Clean up working directory on bastion
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}"
+    state: absent
+  delegate_to: bastion
+
+- name: Report removal completion
+  ansible.builtin.debug:
+    msg: "RHOSO deployment resources have been removed."
+  delegate_to: bastion

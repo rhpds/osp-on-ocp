@@ -1,0 +1,39 @@
+---
+- name: Create OpenStack control plane secret
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-ctlplane-secret.yaml"
+  delegate_to: bastion
+
+- name: Verify osp-secret was created
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: osp-secret
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+  register: _ocp4_workload_rhoso_deployment_osp_secret
+  failed_when: _ocp4_workload_rhoso_deployment_osp_secret.resources | length == 0
+  delegate_to: bastion
+
+- name: Create libvirt secret
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-libvirt-secret.yaml"
+  delegate_to: bastion
+
+- name: Verify libvirt-secret was created
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: libvirt-secret
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+  register: _ocp4_workload_rhoso_deployment_libvirt_secret
+  failed_when: _ocp4_workload_rhoso_deployment_libvirt_secret.resources | length == 0
+  delegate_to: bastion
+
+- name: Display secrets status
+  ansible.builtin.debug:
+    msg:
+    - "osp-secret created: {{ _ocp4_workload_rhoso_deployment_osp_secret.resources | length > 0 }}"
+    - "libvirt-secret created: {{ _ocp4_workload_rhoso_deployment_libvirt_secret.resources | length > 0 }}"
+  delegate_to: bastion

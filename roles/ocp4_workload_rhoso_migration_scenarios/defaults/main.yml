@@ -1,0 +1,58 @@
+---
+# ============================================================================
+# Phase toggles — set any to false to skip that phase
+# ============================================================================
+ocp4_workload_rhoso_migration_scenarios_phase_aap_connection: true
+ocp4_workload_rhoso_migration_scenarios_phase_job_templates: true
+
+# ============================================================================
+# Lab environment
+# ============================================================================
+ocp4_workload_rhoso_migration_scenarios_guid: "{{ guid }}"
+
+# ============================================================================
+# AAP configuration
+# ============================================================================
+ocp4_workload_rhoso_migration_scenarios_aap_namespace: "aap"
+ocp4_workload_rhoso_migration_scenarios_aap_instance_name: "aap"
+
+# ============================================================================
+# Migration configuration
+# ============================================================================
+ocp4_workload_rhoso_migration_scenarios_config_dir: "os-migrate-env"
+
+# ============================================================================
+# Migration scenarios
+# ============================================================================
+# Each entry maps to a scenario task file under tasks/scenarios/.
+# Underscores in the key are replaced with hyphens for display names.
+# Example: basic_ha_proxy_migration -> "HAproxy VM Migration" job template
+ocp4_workload_rhoso_migration_scenarios_list:
+- basic_ha_proxy_migration
+
+# ============================================================================
+# Scenario: basic_ha_proxy_migration
+# ============================================================================
+ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_template_name: "HAproxy VM Migration"
+ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_template_description: "Migrate HAproxy VMs from VMware to RHOSO"
+ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_playbook: "playbooks/migration.yml"
+
+# ============================================================================
+# AAP resources (must already exist — created by aap_setup role)
+# ============================================================================
+ocp4_workload_rhoso_migration_scenarios_aap_inventory_name: "Conversion Host Inventory"
+ocp4_workload_rhoso_migration_scenarios_aap_project_name: "vmware migration toolkit project"
+ocp4_workload_rhoso_migration_scenarios_aap_ee_name: "VMware Migration toolkit execution environment"
+ocp4_workload_rhoso_migration_scenarios_aap_credential_name: "Bastion key"
+
+# ============================================================================
+# VMs to migrate (informational — displayed in summary)
+# ============================================================================
+ocp4_workload_rhoso_migration_scenarios_vms_to_migrate:
+- "haproxy-{{ guid }}"
+
+# ============================================================================
+# Timeouts
+# ============================================================================
+ocp4_workload_rhoso_migration_scenarios_aap_api_retries: 30
+ocp4_workload_rhoso_migration_scenarios_aap_api_delay: 10

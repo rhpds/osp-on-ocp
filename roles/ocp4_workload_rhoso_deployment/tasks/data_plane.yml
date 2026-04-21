@@ -1,0 +1,262 @@
+---
+- name: Apply data plane network configuration
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-dataplane-netconfig.yaml"
+  delegate_to: bastion
+
+- name: Set hostname for compute node
+  ansible.builtin.hostname:
+    name: "{{ ocp4_workload_rhoso_deployment_compute_nodes[0].hostname }}"
+  delegate_to: compute01
+  become: true
+
+- name: Configure static eth1 interface for control plane
+  ansible.builtin.command:
+    cmd: >-
+      nmcli con add con-name "static-eth1" ifname eth1
+      type ethernet ip4 {{ ocp4_workload_rhoso_deployment_compute_nodes[0].ctlplane_ip }}/24
+      ipv4.dns "172.22.0.89"
+  delegate_to: compute01
+  become: true
+  register: _ocp4_workload_rhoso_deployment_compute_eth1
+  changed_when: >-
+    'Connection successfully added' in
+    (_ocp4_workload_rhoso_deployment_compute_eth1.stdout | default(''))
+  failed_when: >-
+    _ocp4_workload_rhoso_deployment_compute_eth1.rc != 0 and
+    'already exists' not in (_ocp4_workload_rhoso_deployment_compute_eth1.stderr | default(''))
+
+- name: Activate static-eth1 connection on compute
+  ansible.builtin.command:
+    cmd: nmcli con up "static-eth1"
+  delegate_to: compute01
+  become: true
+  changed_when: true
+
+- name: Configure eth0 DHCP connection on compute
+  ansible.builtin.command:
+    cmd: >-
+      nmcli con add con-name "eth0-dhcp" ifname eth0
+      type ethernet ipv4.method auto ipv6.method ignore
+  delegate_to: compute01
+  become: true
+  register: _ocp4_workload_rhoso_deployment_compute_eth0
+  changed_when: >-
+    'Connection successfully added' in
+    (_ocp4_workload_rhoso_deployment_compute_eth0.stdout | default(''))
+  failed_when: >-
+    _ocp4_workload_rhoso_deployment_compute_eth0.rc != 0 and
+    'already exists' not in (_ocp4_workload_rhoso_deployment_compute_eth0.stderr | default(''))
+
+- name: Activate eth0-dhcp connection on compute
+  ansible.builtin.command:
+    cmd: nmcli con up "eth0-dhcp"
+  delegate_to: compute01
+  become: true
+  changed_when: true
+
+- name: Set stable ID for eth0 connection on compute
+  ansible.builtin.command:
+    cmd: nmcli con mod eth0-dhcp connection.stable-id user-set
+  delegate_to: compute01
+  become: true
+  changed_when: true
+
+- name: Read SSH key files
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  register: _ocp4_workload_rhoso_deployment_ssh_keys
+  loop:
+  - "{{ ocp4_workload_rhoso_deployment_bastion_ssh_public_key }}"
+  - "{{ ocp4_workload_rhoso_deployment_bastion_ssh_private_key }}"
+  delegate_to: bastion
+
+- name: Create dataplane ansible SSH key secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: dataplane-ansible-ssh-private-key-secret
+        namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+      type: Opaque
+      data:
+        authorized_keys: "{{ _ocp4_workload_rhoso_deployment_ssh_keys.results[0].content }}"
+        ssh-privatekey: "{{ _ocp4_workload_rhoso_deployment_ssh_keys.results[1].content }}"
+        ssh-publickey: "{{ _ocp4_workload_rhoso_deployment_ssh_keys.results[0].content }}"
+  delegate_to: bastion
+
+- name: Generate nova migration SSH key pair
+  community.crypto.openssh_keypair:
+    path: "{{ ansible_env.HOME }}/nova-migration-key"
+    type: ecdsa
+    size: 521
+    force: false
+  delegate_to: bastion
+
+- name: Read nova migration SSH key files
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  register: _ocp4_workload_rhoso_deployment_nova_keys
+  loop:
+  - "{{ ansible_env.HOME }}/nova-migration-key"
+  - "{{ ansible_env.HOME }}/nova-migration-key.pub"
+  delegate_to: bastion
+
+- name: Create nova migration SSH key secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: nova-migration-ssh-key
+        namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+      type: Opaque
+      data:
+        ssh-privatekey: "{{ _ocp4_workload_rhoso_deployment_nova_keys.results[0].content }}"
+        ssh-publickey: "{{ _ocp4_workload_rhoso_deployment_nova_keys.results[1].content }}"
+  delegate_to: bastion
+
+- name: Create subscription manager secret
+  when:
+  - ocp4_workload_rhoso_deployment_rhc_activation_keys | length > 0
+  - ocp4_workload_rhoso_deployment_rhc_organization | length > 0
+  delegate_to: bastion
+  block:
+  - name: Build subscription manager rhc_auth JSON
+    ansible.builtin.set_fact:
+      _ocp4_workload_rhoso_deployment_rhc_auth: "{{ {'activation_keys': {'keys': ocp4_workload_rhoso_deployment_rhc_activation_keys}} | to_json }}"
+
+  - name: Quote rhc_organization for subscription-manager Secret
+    ansible.builtin.set_fact:
+      _ocp4_workload_rhoso_deployment_rhc_org_quoted: "{{ ocp4_workload_rhoso_deployment_rhc_organization | regex_replace('^', _rhc_org_quote) | regex_replace('$', _rhc_org_quote) }}"
+    vars:
+      _rhc_org_quote: '"'
+    when: ocp4_workload_rhoso_deployment_rhc_organization | length > 0
+
+  - name: Apply subscription manager secret
+    kubernetes.core.k8s:
+      state: present
+      definition:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: subscription-manager
+          namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+        type: Opaque
+        stringData:
+          rhc_auth: "{{ _ocp4_workload_rhoso_deployment_rhc_auth }}"
+          rhc_organization: "{{ _ocp4_workload_rhoso_deployment_rhc_org_quoted | default(omit) }}"
+
+- name: Build registry authentication JSON
+  ansible.builtin.set_fact:
+    _ocp4_workload_rhoso_deployment_registry_logins: >-
+      {{ {'registry.redhat.io':
+          {ocp4_workload_rhoso_deployment_registry_username:
+           ocp4_workload_rhoso_deployment_registry_password}} | to_json
+         if (ocp4_workload_rhoso_deployment_registry_username | length > 0 and
+             ocp4_workload_rhoso_deployment_registry_password | length > 0)
+         else '{}' }}
+  delegate_to: bastion
+
+- name: Apply Red Hat registry secret
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: redhat-registry
+        namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+      type: Opaque
+      data:
+        edpm_container_registry_logins: "{{ _ocp4_workload_rhoso_deployment_registry_logins | b64encode }}"
+  delegate_to: bastion
+
+- name: Wait for OpenStack DataPlane CRDs
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: "{{ item }}"
+  register: _ocp4_workload_rhoso_deployment_dp_crd
+  until: _ocp4_workload_rhoso_deployment_dp_crd.resources | length > 0
+  retries: 30
+  delay: 10
+  loop:
+  - openstackdataplanenodesets.dataplane.openstack.org
+  - openstackdataplanedeployments.dataplane.openstack.org
+  delegate_to: bastion
+
+- name: Apply data plane node set
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-dataplane-node-set-deploy.yaml"
+  retries: 5
+  delay: 10
+  delegate_to: bastion
+
+- name: Apply data plane deployment
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-dataplane-deployment.yaml"
+  retries: 5
+  delay: 10
+  delegate_to: bastion
+
+- name: Wait for Data Plane Deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: dataplane.openstack.org/v1beta1
+    kind: OpenStackDataPlaneDeployment
+    name: openstack-compute01
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+  register: _ocp4_workload_rhoso_deployment_dp_status
+  until: >
+    _ocp4_workload_rhoso_deployment_dp_status.resources | length > 0 and
+    _ocp4_workload_rhoso_deployment_dp_status.resources[0].status is defined and
+    (
+      (_ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('conditions', [])
+        | selectattr('type', 'equalto', 'Ready')
+        | selectattr('status', 'equalto', 'True') | list | length > 0) or
+      (_ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('conditions', [])
+        | selectattr('type', 'equalto', 'DeploymentReady')
+        | selectattr('status', 'equalto', 'True') | list | length > 0) or
+      (_ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('deploymentConditions', {}) | length > 0 and
+       _ocp4_workload_rhoso_deployment_dp_status.resources[0].status.deploymentConditions
+        | dict2items | selectattr('value.status', 'equalto', 'True') | list | length ==
+       (_ocp4_workload_rhoso_deployment_dp_status.resources[0].status.deploymentConditions
+        | dict2items | list | length)) or
+      (_ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('message', '') == 'Setup complete')
+    )
+  retries: 720
+  delay: 10
+  delegate_to: bastion
+
+- name: Display Data Plane Deployment status
+  ansible.builtin.debug:
+    msg: |
+      === OpenStack Data Plane Deployment Status ===
+      Message: {{ _ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('message', 'No message') }}
+      Conditions: {{ _ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('conditions', []) | map(attribute='type') | list }}
+      Setup Complete: {{ _ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('message', '') == 'Setup complete' }}
+  when: _ocp4_workload_rhoso_deployment_dp_status.resources | length > 0
+  delegate_to: bastion
+
+- name: Discover compute hosts in Nova cell
+  kubernetes.core.k8s_exec:
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    pod: nova-cell0-conductor-0
+    command: nova-manage cell_v2 discover_hosts --verbose
+  register: _ocp4_workload_rhoso_deployment_discover_hosts
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Display host discovery results
+  ansible.builtin.debug:
+    var: _ocp4_workload_rhoso_deployment_discover_hosts.stdout_lines
+  when:
+  - _ocp4_workload_rhoso_deployment_discover_hosts is defined
+  - _ocp4_workload_rhoso_deployment_discover_hosts.stdout_lines is defined
+  delegate_to: bastion

@@ -1,0 +1,71 @@
+---
+- name: Create working directory for migration configuration
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}"
+    state: directory
+    mode: '0755'
+  delegate_to: bastion
+
+- name: Switch to OpenStack project
+  ansible.builtin.shell: oc project {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}
+  changed_when: false
+  delegate_to: bastion
+
+- name: Get OpenStack security group ID (basic)
+  ansible.builtin.shell: |
+    oc exec -t openstackclient -- openstack security group show basic -f value -c id 2>/dev/null || echo ""
+  register: _ocp4_workload_migration_sg_basic
+  changed_when: false
+  failed_when: false
+  delegate_to: bastion
+
+- name: Get OpenStack default security group ID (fallback)
+  ansible.builtin.shell: |
+    oc exec -t openstackclient -- openstack security group show default -f value -c id 2>/dev/null || echo ""
+  register: _ocp4_workload_migration_sg_default
+  changed_when: false
+  failed_when: false
+  when: _ocp4_workload_migration_sg_basic.stdout | trim == ""
+  delegate_to: bastion
+
+- name: Set security group ID
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_security_group_id: >-
+      {{ _ocp4_workload_migration_sg_basic.stdout | trim
+         if (_ocp4_workload_migration_sg_basic.stdout | trim != '')
+         else (_ocp4_workload_migration_sg_default.stdout | default('') | trim) }}
+
+- name: Fail if no security group found
+  ansible.builtin.fail:
+    msg: >-
+      No security group found. The 'basic' security group is created during the
+      conversion host deployment phase. Enable phase_conversion_host or create
+      a security group named 'basic' in OpenStack.
+  when: _ocp4_workload_migration_security_group_id | length == 0
+
+- name: Get OpenStack project ID
+  ansible.builtin.shell: |
+    oc exec -t openstackclient -- openstack project list | grep ' admin ' | awk '{print $2}'
+  register: _ocp4_workload_migration_project_id
+  changed_when: false
+  delegate_to: bastion
+
+- name: Get OpenStack auth URL
+  ansible.builtin.shell: |
+    oc exec -t openstackclient -- openstack endpoint list --service identity --interface public -c URL -f value
+  register: _ocp4_workload_migration_auth_url
+  changed_when: false
+  delegate_to: bastion
+
+- name: Create os_migrate configuration file for AAP
+  ansible.builtin.template:
+    src: os_migrate_for_aap.yaml.j2
+    dest: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}/os_migrate_for_aap.yaml"
+    mode: '0644'
+  delegate_to: bastion
+
+- name: Display migration configuration file location
+  ansible.builtin.debug:
+    msg: >-
+      Migration configuration written to:
+      ~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}/os_migrate_for_aap.yaml

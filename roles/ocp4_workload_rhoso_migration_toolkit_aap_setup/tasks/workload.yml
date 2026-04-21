@@ -1,0 +1,31 @@
+---
+- name: Deploy conversion host in OpenStack
+  ansible.builtin.include_tasks: deploy_conversion_host.yml
+  when: ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_conversion_host | bool
+
+- name: Install Ansible Automation Platform
+  ansible.builtin.include_tasks: install_aap.yml
+  when: ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_install_aap | bool
+
+- name: Build and push migration execution environment
+  ansible.builtin.include_tasks: ansible_builder.yml
+  when: ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_ansible_builder | bool
+
+- name: Generate migration configuration files
+  ansible.builtin.include_tasks: configure_migration.yml
+  when: ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_configure_migration | bool
+
+- name: Configure AAP resources via API
+  ansible.builtin.include_tasks: configure_aap_api.yml
+  when: ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_configure_aap_api | bool
+
+- name: Report deployment completion
+  ansible.builtin.debug:
+    msg:
+    - ""
+    - "VMware Migration Toolkit AAP Setup Complete"
+    - "============================================"
+    - ""
+    - "AAP namespace: {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+    - "Migration config directory: ~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}/"
+    - ""

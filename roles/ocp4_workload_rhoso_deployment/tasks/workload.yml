@@ -1,0 +1,48 @@
+---
+- name: Prerequisites — install NMState, MetalLB, verify cert-manager
+  ansible.builtin.include_tasks: prerequisites.yml
+  when: ocp4_workload_rhoso_deployment_phase_prerequisites | bool
+
+- name: Install OpenStack operators
+  ansible.builtin.include_tasks: install_operators.yml
+  when: ocp4_workload_rhoso_deployment_phase_install_operators | bool
+
+- name: Configure security — create secrets
+  ansible.builtin.include_tasks: security.yml
+  when: ocp4_workload_rhoso_deployment_phase_security | bool
+
+- name: Configure NFS server
+  ansible.builtin.include_tasks: nfs_server.yml
+  when: ocp4_workload_rhoso_deployment_phase_nfs_server | bool
+
+- name: Set up network isolation
+  ansible.builtin.include_tasks: network_isolation.yml
+  when: ocp4_workload_rhoso_deployment_phase_network_isolation | bool
+
+- name: Deploy OpenStack control plane
+  ansible.builtin.include_tasks: control_plane.yml
+  when: ocp4_workload_rhoso_deployment_phase_control_plane | bool
+
+- name: Configure data plane
+  ansible.builtin.include_tasks: data_plane.yml
+  when: ocp4_workload_rhoso_deployment_phase_data_plane | bool
+
+- name: Validate deployment
+  ansible.builtin.include_tasks: validation.yml
+  when: ocp4_workload_rhoso_deployment_phase_validation | bool
+
+- name: Enable optional services (Heat, Swift)
+  ansible.builtin.include_tasks: optional_services.yml
+  when: ocp4_workload_rhoso_deployment_phase_optional_services | bool
+
+- name: Report deployment completion
+  ansible.builtin.debug:
+    msg:
+    - ""
+    - "RHOSO Deployment Complete"
+    - "========================="
+    - ""
+    - "OpenStack namespace: {{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    - "Operators namespace: {{ ocp4_workload_rhoso_deployment_openstack_operators_namespace }}"
+    - ""
+  delegate_to: bastion

@@ -1,0 +1,201 @@
+---
+- name: Verify required conversion host variables
+  ansible.builtin.assert:
+    that:
+    - ocp4_workload_rhoso_migration_toolkit_aap_setup_guid is defined
+    - ocp4_workload_rhoso_migration_toolkit_aap_setup_guid != "changeme"
+    - ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip | length > 0
+    - ocp4_workload_rhoso_migration_toolkit_aap_setup_public_net_start | length > 0
+    - ocp4_workload_rhoso_migration_toolkit_aap_setup_public_net_end | length > 0
+    fail_msg: >-
+      Required variables are not defined. Please ensure your inventory contains:
+      rhoso_conversion_host_ip, rhoso_public_net_start, rhoso_public_net_end
+    success_msg: "All required conversion host variables are defined"
+
+# --- Download CentOS Stream 10 image ---
+
+- name: Check if CentOS Stream 10 image already exists
+  ansible.builtin.stat:
+    path: "{{ ansible_env.HOME }}/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+  register: _ocp4_workload_migration_centos_image_file
+  delegate_to: bastion
+
+- name: Download CentOS Stream 10 qcow2 image
+  ansible.builtin.get_url:
+    url: "https://cloud.centos.org/centos/10-stream/x86_64/images/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    dest: "{{ ansible_env.HOME }}/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    mode: '0644'
+  when: not _ocp4_workload_migration_centos_image_file.stat.exists
+  delegate_to: bastion
+
+# --- Copy resources to openstackclient pod ---
+
+- name: Copy bastion public key to openstackclient pod
+  kubernetes.core.k8s_cp:
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
+    pod: openstackclient
+    remote_path: "/home/cloud-admin/bastion_{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}.pub"
+    local_path: "{{ ansible_env.HOME }}/.ssh/bastion_{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}.pub"
+    state: to_pod
+  delegate_to: bastion
+
+- name: Copy CentOS Stream 10 image to openstackclient pod
+  kubernetes.core.k8s_cp:
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
+    pod: openstackclient
+    remote_path: "/home/cloud-admin/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    local_path: "{{ ansible_env.HOME }}/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    state: to_pod
+  delegate_to: bastion
+
+# --- Create OpenStack resources via setup script ---
+
+- name: Create conversion host setup script
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/setup-conversion-host.sh"
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+
+      export GATEWAY={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_gateway }}
+      export PUBLIC_NETWORK_CIDR={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_public_cidr }}
+      export PRIVATE_NETWORK_CIDR={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_private_cidr }}
+      export PUBLIC_NET_START={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_public_net_start }}
+      export PUBLIC_NET_END={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_public_net_end }}
+      export DNS_SERVER={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_dns }}
+      export CONVERSION_HOST_IP={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }}
+      export LAB_GUID={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}
+
+      if ! openstack security group show basic &>/dev/null; then
+        openstack security group create basic
+        openstack security group rule create basic --protocol tcp --dst-port 22:22 --remote-ip 0.0.0.0/0
+        openstack security group rule create --protocol icmp basic
+        openstack security group rule create --protocol udp --dst-port 53:53 basic
+      fi
+
+      if ! openstack network show public &>/dev/null; then
+        openstack network create --external --provider-physical-network datacentre --provider-network-type flat public
+        openstack subnet create public-net \
+          --subnet-range $PUBLIC_NETWORK_CIDR \
+          --no-dhcp \
+          --dns-nameserver $DNS_SERVER \
+          --gateway $GATEWAY \
+          --allocation-pool start=$PUBLIC_NET_START,end=$PUBLIC_NET_END \
+          --network public
+      fi
+
+      if ! openstack network show private &>/dev/null; then
+        openstack network create --internal private
+        openstack subnet create private-net \
+          --subnet-range $PRIVATE_NETWORK_CIDR \
+          --dns-nameserver $DNS_SERVER \
+          --network private
+      fi
+
+      if ! openstack router show vrouter &>/dev/null; then
+        openstack router create vrouter
+        openstack router set vrouter --external-gateway public
+        openstack router add subnet vrouter private-net
+      fi
+
+      if ! openstack flavor show migrate &>/dev/null; then
+        openstack flavor create --ram 4096 --disk 35 --vcpu 2 --public migrate
+      fi
+
+      if ! openstack keypair show bastion_key &>/dev/null; then
+        openstack keypair create --public-key ~/bastion_${LAB_GUID}.pub bastion_key
+      fi
+
+      if ! openstack image show centos10-image &>/dev/null; then
+        openstack image create centos10-image \
+          --container-format bare \
+          --disk-format qcow2 \
+          --public \
+          --file CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2
+      fi
+
+      if ! openstack server show conversion-host &>/dev/null; then
+        openstack server create \
+          --flavor migrate \
+          --key-name bastion_key \
+          --network private \
+          --security-group basic \
+          --image centos10-image \
+          conversion-host
+
+        timeout=300
+        elapsed=0
+        while [ $elapsed -lt $timeout ]; do
+          status=$(openstack server show conversion-host -f value -c status)
+          if [ "$status" == "ACTIVE" ]; then
+            break
+          fi
+          sleep 10
+          elapsed=$((elapsed + 10))
+        done
+      fi
+
+      if ! openstack floating ip show $CONVERSION_HOST_IP &>/dev/null; then
+        openstack floating ip create public --floating-ip-address $CONVERSION_HOST_IP
+      fi
+
+      openstack server add floating ip conversion-host $CONVERSION_HOST_IP 2>/dev/null || true
+
+      openstack server list
+  delegate_to: bastion
+
+- name: Copy setup script to openstackclient pod
+  kubernetes.core.k8s_cp:
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
+    pod: openstackclient
+    remote_path: "/home/cloud-admin/setup-conversion-host.sh"
+    local_path: "{{ ansible_env.HOME }}/setup-conversion-host.sh"
+    state: to_pod
+  delegate_to: bastion
+
+- name: Execute conversion host setup in openstackclient pod
+  kubernetes.core.k8s_exec:
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
+    pod: openstackclient
+    command: /bin/bash /home/cloud-admin/setup-conversion-host.sh
+  register: _ocp4_workload_migration_setup_output
+  delegate_to: bastion
+
+- name: Display setup output
+  ansible.builtin.debug:
+    msg: "{{ _ocp4_workload_migration_setup_output.stdout_lines }}"
+
+# --- Wait for SSH and install VIX disklib ---
+
+- name: Wait for conversion host to be accessible via SSH
+  ansible.builtin.wait_for:
+    host: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }}"
+    port: 22
+    delay: 10
+    timeout: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ssh_wait_timeout }}"
+    state: started
+  delegate_to: bastion
+
+- name: Install VMware VIX disklib on conversion host
+  ansible.builtin.shell: |
+    ssh -o StrictHostKeyChecking=no -i {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key }} \
+      cloud-user@{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }} \
+      'sudo dnf install -y https://repo.storware.eu/vprotect/current/el9/vmware-vix-disklib-8.0.0-20521017.el9.x86_64.rpm'
+  register: _ocp4_workload_migration_vix_install
+  changed_when: "'Installing' in _ocp4_workload_migration_vix_install.stdout or 'Installed' in _ocp4_workload_migration_vix_install.stdout"
+  delegate_to: bastion
+
+- name: Save conversion host information
+  ansible.builtin.copy:
+    dest: "{{ ansible_env.HOME }}/conversion-host-info.txt"
+    mode: '0644'
+    content: |
+      Conversion Host Information
+      ===========================
+      Name: conversion-host
+      IP Address: {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }}
+      Image: CentOS Stream 10
+      Flavor: migrate (4GB RAM, 2 vCPU, 35GB disk)
+      SSH: ssh -i {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key }} cloud-user@{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }}
+  delegate_to: bastion

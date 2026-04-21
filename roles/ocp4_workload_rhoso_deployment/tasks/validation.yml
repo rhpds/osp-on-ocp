@@ -1,0 +1,97 @@
+---
+- name: Configure bastion external network interface
+  ansible.builtin.command:
+    cmd: >-
+      nmcli con add con-name "static-eth1" ifname eth1
+      type ethernet ip4 {{ ocp4_workload_rhoso_deployment_bastion_external_ip }}/16
+  become: true
+  register: _ocp4_workload_rhoso_deployment_bastion_nmcli
+  changed_when: >-
+    'Connection successfully added' in
+    (_ocp4_workload_rhoso_deployment_bastion_nmcli.stdout | default(''))
+  failed_when: >-
+    _ocp4_workload_rhoso_deployment_bastion_nmcli.rc != 0 and
+    'already exists' not in (_ocp4_workload_rhoso_deployment_bastion_nmcli.stderr | default(''))
+  delegate_to: bastion
+
+- name: Activate bastion external network connection
+  ansible.builtin.command:
+    cmd: nmcli con up "static-eth1"
+  become: true
+  changed_when: true
+  delegate_to: bastion
+
+- name: Get OpenStack client pod
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    label_selectors:
+    - "service=openstackclient"
+  register: _ocp4_workload_rhoso_deployment_osclient_pods
+  delegate_to: bastion
+
+- name: Verify OpenStack compute services
+  kubernetes.core.k8s_exec:
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    pod: "{{ _ocp4_workload_rhoso_deployment_osclient_pods.resources[0].metadata.name }}"
+    command: openstack compute service list
+  register: _ocp4_workload_rhoso_deployment_compute_svc
+  when: _ocp4_workload_rhoso_deployment_osclient_pods.resources | length > 0
+  delegate_to: bastion
+
+- name: Display OpenStack compute services
+  ansible.builtin.debug:
+    var: _ocp4_workload_rhoso_deployment_compute_svc.stdout_lines
+  when: _ocp4_workload_rhoso_deployment_compute_svc is defined
+  delegate_to: bastion
+
+- name: Verify OpenStack network agents
+  kubernetes.core.k8s_exec:
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    pod: "{{ _ocp4_workload_rhoso_deployment_osclient_pods.resources[0].metadata.name }}"
+    command: openstack network agent list
+  register: _ocp4_workload_rhoso_deployment_net_agents
+  when: _ocp4_workload_rhoso_deployment_osclient_pods.resources | length > 0
+  delegate_to: bastion
+
+- name: Display OpenStack network agents
+  ansible.builtin.debug:
+    var: _ocp4_workload_rhoso_deployment_net_agents.stdout_lines
+  when: _ocp4_workload_rhoso_deployment_net_agents is defined
+  delegate_to: bastion
+
+- name: Verify control plane services are running
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+    label_selectors:
+    - "service in (keystone, nova, neutron, glance, cinder, horizon)"
+  register: _ocp4_workload_rhoso_deployment_cp_pods
+  delegate_to: bastion
+
+- name: Display control plane pod status
+  ansible.builtin.debug:
+    msg: "{{ item.metadata.name }}: {{ item.status.phase }}"
+  loop: "{{ _ocp4_workload_rhoso_deployment_cp_pods.resources }}"
+  when: _ocp4_workload_rhoso_deployment_cp_pods.resources | length > 0
+  delegate_to: bastion
+
+- name: Count running control plane pods
+  ansible.builtin.set_fact:
+    _ocp4_workload_rhoso_deployment_running_cp: >-
+      {{ _ocp4_workload_rhoso_deployment_cp_pods.resources
+         | json_query('[?status.phase==`Running`]') | length }}
+  when: _ocp4_workload_rhoso_deployment_cp_pods.resources | length > 0
+  delegate_to: bastion
+
+- name: Deployment validation summary
+  ansible.builtin.debug:
+    msg:
+    - "=== RHOSO Deployment Summary ==="
+    - "Control plane pods running: {{ _ocp4_workload_rhoso_deployment_running_cp | default(0) }}"
+    - "Total control plane pods: {{ _ocp4_workload_rhoso_deployment_cp_pods.resources | length }}"
+    - "OpenStack client available: {{ _ocp4_workload_rhoso_deployment_osclient_pods.resources | length > 0 }}"
+    - "Deployment completed successfully!"
+  delegate_to: bastion

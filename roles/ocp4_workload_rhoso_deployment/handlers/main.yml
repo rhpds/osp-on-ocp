@@ -1,0 +1,5 @@
+---
+- name: Restart nfs-server
+  ansible.builtin.raw: systemctl restart nfs-server
+  delegate_to: nfs-server
+  become: true

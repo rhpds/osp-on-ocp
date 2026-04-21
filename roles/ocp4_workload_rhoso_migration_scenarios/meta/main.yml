@@ -1,0 +1,25 @@
+---
+galaxy_info:
+  role_name: ocp4_workload_rhoso_migration_scenarios
+  author:
+  - Pablo Navarro <pnavarro@redhat.com>
+  description: |
+    Deploys migration scenario job templates in Ansible Automation Platform.
+    Discovers AAP connection details from OpenShift, obtains an OAuth2 token,
+    reads migration configuration, and creates one job template per scenario
+    defined in the migration_scenarios list.
+    Requires AAP to be installed and base-configured (credentials, inventory,
+    project, and execution environment must already exist).
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.9"
+  platforms: []
+  galaxy_tags:
+  - ocp
+  - openshift
+  - openstack
+  - rhoso
+  - aap
+  - migration
+  - vmware
+  - scenarios
+dependencies: []

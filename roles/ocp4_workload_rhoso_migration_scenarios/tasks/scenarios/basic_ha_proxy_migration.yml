@@ -1,0 +1,31 @@
+---
+- name: Create HAproxy VM Migration Job Template
+  awx.awx.job_template:
+    name: "{{ ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_template_name }}"
+    description: "{{ ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_template_description }}"
+    job_type: "run"
+    inventory: "{{ ocp4_workload_rhoso_migration_scenarios_aap_inventory_name }}"
+    project: "{{ ocp4_workload_rhoso_migration_scenarios_aap_project_name }}"
+    playbook: "{{ ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_playbook }}"
+    execution_environment: "{{ ocp4_workload_rhoso_migration_scenarios_aap_ee_name }}"
+    credentials:
+    - "{{ ocp4_workload_rhoso_migration_scenarios_aap_credential_name }}"
+    extra_vars: "{{ _ocp4_workload_migration_scenarios_extra_vars }}"
+    ask_variables_on_launch: true
+    state: present
+    controller_host: "{{ _ocp4_workload_migration_scenarios_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_scenarios_api_token }}"
+    validate_certs: false
+  register: _ocp4_workload_migration_scenarios_haproxy_result
+  delegate_to: bastion
+
+- name: Display HAproxy migration scenario result
+  ansible.builtin.debug:
+    msg: |
+      Job template "{{ ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_template_name }}" created.
+      ID: {{ _ocp4_workload_migration_scenarios_haproxy_result.id | default('already exists') }}
+      Navigate to: Resources -> Templates -> "{{ ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_template_name }}"
+      Click "Launch" to start the VM migration.
+      Migration target: {{ ocp4_workload_rhoso_migration_scenarios_vms_to_migrate | first | default('(see extra_vars)') }}
+  when: not (_ocp4_workload_migration_scenarios_haproxy_result.failed | default(false))
+  delegate_to: bastion

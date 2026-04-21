@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  role_name: ocp4_workload_rhoso_deployment
+  author:
+  - Pablo Navarro <pnavarro@redhat.com>
+  description: |
+    Deploys Red Hat OpenStack Services on OpenShift (RHOSO) end-to-end.
+    Installs prerequisite operators (NMState, MetalLB), OpenStack operators,
+    configures security, NFS storage, network isolation, control plane,
+    data plane, and validates the deployment.
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.9"
+  platforms: []
+  galaxy_tags:
+  - ocp
+  - openshift
+  - openstack
+  - rhoso
+  - deployment
+dependencies: []

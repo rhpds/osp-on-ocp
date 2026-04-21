@@ -1,0 +1,119 @@
+---
+- name: Apply NodeNetworkConfigurationPolicy for worker node 1
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-nncp-w1.yaml"
+  delegate_to: bastion
+
+- name: Apply NodeNetworkConfigurationPolicy for worker node 2
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-nncp-w2.yaml"
+  delegate_to: bastion
+
+- name: Apply NodeNetworkConfigurationPolicy for worker node 3
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-nncp-w3.yaml"
+  delegate_to: bastion
+
+- name: Wait for all NNCPs to be created
+  kubernetes.core.k8s_info:
+    api_version: nmstate.io/v1
+    kind: NodeNetworkConfigurationPolicy
+  register: _ocp4_workload_rhoso_deployment_nncp_status
+  until: _ocp4_workload_rhoso_deployment_nncp_status.resources | length >= 3
+  retries: 60
+  delay: 10
+  delegate_to: bastion
+
+- name: Check individual NNCP status
+  kubernetes.core.k8s_info:
+    api_version: nmstate.io/v1
+    kind: NodeNetworkConfigurationPolicy
+    name: "{{ item }}"
+  register: _ocp4_workload_rhoso_deployment_nncp_individual
+  until: >
+    _ocp4_workload_rhoso_deployment_nncp_individual.resources | length > 0 and
+    _ocp4_workload_rhoso_deployment_nncp_individual.resources[0].status is defined and
+    _ocp4_workload_rhoso_deployment_nncp_individual.resources[0].status.conditions is defined and
+    _ocp4_workload_rhoso_deployment_nncp_individual.resources[0].status.conditions | length > 0
+  retries: 30
+  delay: 10
+  loop: "{{ ocp4_workload_rhoso_deployment_nncp_names }}"
+  delegate_to: bastion
+
+- name: Display NNCP status
+  ansible.builtin.debug:
+    msg: "NNCP {{ item.metadata.name }}: {{ item.status.reason | default('Unknown') }}"
+  loop: "{{ _ocp4_workload_rhoso_deployment_nncp_status.resources }}"
+  when:
+  - item.status is defined
+  - item.metadata is defined
+  delegate_to: bastion
+
+- name: Apply NetworkAttachmentDefinitions for isolated networks
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-netattach.yaml"
+  delegate_to: bastion
+
+- name: Wait for MetalLB additional CRDs
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: "{{ item }}"
+  register: _ocp4_workload_rhoso_deployment_metallb_crds
+  until: _ocp4_workload_rhoso_deployment_metallb_crds.resources | length > 0
+  retries: 30
+  delay: 10
+  loop:
+  - ipaddresspools.metallb.io
+  - l2advertisements.metallb.io
+  delegate_to: bastion
+
+- name: Apply MetalLB IP address pools
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-metal-lb-ip-address-pools.yaml"
+  retries: 5
+  delay: 10
+  delegate_to: bastion
+
+- name: Apply MetalLB L2 advertisements
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-metal-lb-l2-advertisements.yaml"
+  retries: 5
+  delay: 10
+  delegate_to: bastion
+
+- name: Enable global IP forwarding for OVN
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: operator.openshift.io/v1
+      kind: Network
+      metadata:
+        name: cluster
+      spec:
+        defaultNetwork:
+          ovnKubernetesConfig:
+            gatewayConfig:
+              ipForwarding: "Global"
+    merge_type: merge
+  delegate_to: bastion
+
+- name: Verify NetworkAttachmentDefinitions
+  kubernetes.core.k8s_info:
+    api_version: k8s.cni.cncf.io/v1
+    kind: NetworkAttachmentDefinition
+    namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
+  register: _ocp4_workload_rhoso_deployment_net_attach_defs
+  delegate_to: bastion
+
+- name: Display created NetworkAttachmentDefinitions
+  ansible.builtin.debug:
+    msg: "Created NetworkAttachmentDefinition: {{ item.metadata.name }}"
+  loop: "{{ _ocp4_workload_rhoso_deployment_net_attach_defs.resources }}"
+  delegate_to: bastion

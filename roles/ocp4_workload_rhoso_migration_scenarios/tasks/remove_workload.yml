@@ -1,0 +1,19 @@
+---
+- name: Obtain AAP connection info for teardown
+  ansible.builtin.include_tasks: get_aap_connection.yml
+
+- name: Delete HAproxy VM Migration job template
+  awx.awx.job_template:
+    name: "{{ ocp4_workload_rhoso_migration_scenarios_basic_ha_proxy_migration_template_name }}"
+    state: absent
+    controller_host: "{{ _ocp4_workload_migration_scenarios_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_scenarios_api_token }}"
+    validate_certs: false
+  ignore_errors: true
+  when: "'basic_ha_proxy_migration' in ocp4_workload_rhoso_migration_scenarios_list"
+  delegate_to: bastion
+
+- name: Report removal completion
+  ansible.builtin.debug:
+    msg: "Migration scenario job templates have been removed."
+  delegate_to: bastion

@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  role_name: ocp4_workload_rhoso_migration_toolkit_aap_setup
+  author:
+  - Pablo Navarro <pnavarro@redhat.com>
+  description: |
+    Deploys the VMware Migration Toolkit with Ansible Automation Platform on RHOSO.
+    Sets up a conversion host in OpenStack, installs AAP with AutomationHub,
+    builds and pushes a migration execution environment, generates migration
+    configuration, and optionally configures AAP resources via the AWX API.
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.9"
+  platforms: []
+  galaxy_tags:
+  - ocp
+  - openshift
+  - openstack
+  - rhoso
+  - aap
+  - migration
+  - vmware
+dependencies: []

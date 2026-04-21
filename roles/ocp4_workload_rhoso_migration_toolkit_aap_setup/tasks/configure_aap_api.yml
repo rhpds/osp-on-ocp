@@ -1,0 +1,205 @@
+---
+# --- Obtain AAP credentials and API token ---
+
+- name: Get AAP admin password from secret
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_instance_name }}-admin-password"
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+  register: _ocp4_workload_migration_api_admin_secret
+  delegate_to: bastion
+
+- name: Decode AAP admin password
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_api_admin_password: "{{ _ocp4_workload_migration_api_admin_secret.resources[0].data.password | b64decode }}"
+  when: _ocp4_workload_migration_api_admin_secret.resources | length > 0
+
+- name: Get AAP routes
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+  register: _ocp4_workload_migration_api_routes
+  delegate_to: bastion
+
+- name: Extract AAP Controller URL
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_api_controller_url: "https://{{ (_ocp4_workload_migration_api_routes.resources | selectattr('metadata.name', 'match', '.*controller.*') | list | first).spec.host }}"
+  when: _ocp4_workload_migration_api_routes.resources | length > 0
+
+- name: Extract AAP Gateway URL
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_api_gateway_url: "https://{{ (_ocp4_workload_migration_api_routes.resources | selectattr('metadata.name', 'equalto', ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_instance_name) | list | first).spec.host }}"
+  when: _ocp4_workload_migration_api_routes.resources | length > 0
+
+- name: Wait for AAP Controller API to be ready
+  ansible.builtin.uri:
+    url: "{{ _ocp4_workload_migration_api_controller_url }}/api/v2/ping/"
+    method: GET
+    validate_certs: false
+    status_code: 200
+  register: _ocp4_workload_migration_api_ping
+  until: _ocp4_workload_migration_api_ping.status == 200
+  retries: 30
+  delay: 10
+  delegate_to: bastion
+
+- name: Create OAuth2 token via awx-manage
+  ansible.builtin.shell: |
+    oc exec -n {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }} \
+      deployment/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_instance_name }}-controller-web -- \
+      awx-manage create_oauth2_token --user admin
+  register: _ocp4_workload_migration_api_token_result
+  changed_when: true
+  delegate_to: bastion
+
+- name: Set API token
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_api_token: "{{ _ocp4_workload_migration_api_token_result.stdout | trim }}"
+
+# --- Create AAP resources via awx.awx ---
+
+- name: Read SSH private key content
+  ansible.builtin.slurp:
+    src: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key }}"
+  register: _ocp4_workload_migration_api_ssh_key
+  delegate_to: bastion
+
+- name: Create Bastion SSH Credential
+  awx.awx.credential:
+    name: "Bastion key"
+    description: "SSH key for bastion access"
+    organization: "Default"
+    credential_type: "Machine"
+    inputs:
+      username: "cloud-user"
+      ssh_key_data: "{{ _ocp4_workload_migration_api_ssh_key.content | b64decode }}"
+    state: present
+    controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
+    validate_certs: false
+  delegate_to: bastion
+
+- name: Get AAP Hub route for registry
+  kubernetes.core.k8s_info:
+    api_version: route.openshift.io/v1
+    kind: Route
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+  register: _ocp4_workload_migration_api_hub_route
+  delegate_to: bastion
+
+- name: Extract AAP Hub registry URL
+  ansible.builtin.set_fact:
+    _ocp4_workload_migration_api_hub_registry_url: "{{ item.spec.host }}"
+  when:
+  - "'hub' in item.metadata.name"
+  - "'hub-web-svc' in item.spec.to.name"
+  loop: "{{ _ocp4_workload_migration_api_hub_route.resources }}"
+  loop_control:
+    label: "{{ item.metadata.name }}"
+
+- name: Create Conversion Host Inventory
+  awx.awx.inventory:
+    name: "Conversion Host Inventory"
+    description: "Inventory for VM migration conversion hosts"
+    organization: "Default"
+    state: present
+    controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
+    validate_certs: false
+  delegate_to: bastion
+
+- name: Create conversion_host in inventory
+  awx.awx.host:
+    name: "conversion_host"
+    description: "OpenStack conversion host"
+    inventory: "Conversion Host Inventory"
+    state: present
+    variables:
+      ansible_host: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }}"
+      ansible_ssh_user: cloud-user
+    controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
+    validate_certs: false
+  delegate_to: bastion
+
+- name: Create migrator host in inventory
+  awx.awx.host:
+    name: "migrator"
+    description: "Local migration orchestrator"
+    inventory: "Conversion Host Inventory"
+    state: present
+    variables:
+      ansible_connection: local
+      ansible_python_interpreter: "{{ '{{' }} ansible_playbook_python {{ '}}' }}"
+    controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
+    validate_certs: false
+  delegate_to: bastion
+
+- name: Create VMware Migration Toolkit Execution Environment
+  awx.awx.execution_environment:
+    name: "VMware Migration toolkit execution environment"
+    description: "Execution environment for VMware to RHOSO migration"
+    image: "{{ _ocp4_workload_migration_api_hub_registry_url }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_name }}:{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_tag }}"
+    organization: "Default"
+    state: present
+    controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
+    validate_certs: false
+  delegate_to: bastion
+
+- name: Create VMware migration toolkit project
+  awx.awx.project:
+    name: "vmware migration toolkit project"
+    description: "VMware to RHOSO migration toolkit"
+    organization: "Default"
+    scm_type: git
+    scm_url: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_scm_url }}"
+    scm_branch: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_scm_branch }}"
+    scm_update_on_launch: true
+    default_environment: "VMware Migration toolkit execution environment"
+    state: present
+    controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
+    validate_certs: false
+    wait: false
+  register: _ocp4_workload_migration_api_project
+  delegate_to: bastion
+
+- name: Trigger project sync from Git
+  awx.awx.project_update:
+    project: "vmware migration toolkit project"
+    wait: false
+    controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
+    controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
+    validate_certs: false
+  delegate_to: bastion
+
+- name: Wait for project to complete sync
+  ansible.builtin.uri:
+    url: "{{ _ocp4_workload_migration_api_controller_url }}/api/v2/projects/{{ _ocp4_workload_migration_api_project.id }}/"
+    method: GET
+    headers:
+      Authorization: "Bearer {{ _ocp4_workload_migration_api_token }}"
+    validate_certs: false
+    status_code: 200
+  register: _ocp4_workload_migration_api_project_status
+  until: >
+    _ocp4_workload_migration_api_project_status.json.status == "successful" or
+    _ocp4_workload_migration_api_project_status.json.status == "failed" or
+    _ocp4_workload_migration_api_project_status.json.last_job_run is not none
+  retries: 24
+  delay: 5
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Display AAP configuration summary
+  ansible.builtin.debug:
+    msg: |
+      AAP API Configuration Complete
+      ===============================
+      Dashboard: {{ _ocp4_workload_migration_api_gateway_url }}
+      Controller API: {{ _ocp4_workload_migration_api_controller_url }}
+      Created: Credential, Inventory, Hosts, Execution Environment, Project

@@ -42,7 +42,7 @@
       _ocp4_workload_rhoso_ipam4lab_network: "{{ r_ipam_allocation.json.network }}"
 
   - name: Report allocation details
-    ansible.builtin.debug:
+    agnosticd.core.agnosticd_user_info:
       msg:
       - "IPAM4Lab allocation successful:"
       - "  Allocation name: {{ _ocp4_workload_rhoso_ipam4lab_allocation_name }}"

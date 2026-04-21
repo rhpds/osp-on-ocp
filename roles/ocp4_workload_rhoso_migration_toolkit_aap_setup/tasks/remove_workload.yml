@@ -1,0 +1,103 @@
+---
+- name: Delete AnsibleAutomationPlatform CR
+  kubernetes.core.k8s:
+    api_version: aap.ansible.com/v1alpha1
+    kind: AnsibleAutomationPlatform
+    name: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_instance_name }}"
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete AutomationHub CR
+  kubernetes.core.k8s:
+    api_version: automationhub.ansible.com/v1beta1
+    kind: AutomationHub
+    name: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_instance_name }}-hub"
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete AAP Subscription
+  kubernetes.core.k8s:
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    name: ansible-automation-platform
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete AAP OperatorGroup
+  kubernetes.core.k8s:
+    api_version: operators.coreos.com/v1
+    kind: OperatorGroup
+    name: ansible-automation-platform-operator
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete AAP namespace
+  kubernetes.core.k8s:
+    name: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
+    api_version: v1
+    kind: Namespace
+    state: absent
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete NFS PersistentVolume and StorageClass
+  kubernetes.core.k8s:
+    api_version: "{{ item.api_version }}"
+    kind: "{{ item.kind }}"
+    name: "{{ item.name }}"
+    state: absent
+  loop:
+  - api_version: v1
+    kind: PersistentVolume
+    name: nfs-pv1
+  - api_version: storage.k8s.io/v1
+    kind: StorageClass
+    name: nfs
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Delete conversion host via openstackclient pod
+  kubernetes.core.k8s_exec:
+    namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
+    pod: openstackclient
+    command: >-
+      /bin/bash -c "
+      openstack server delete conversion-host --wait 2>/dev/null || true;
+      openstack floating ip delete {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }} 2>/dev/null || true;
+      openstack router remove subnet vrouter private-net 2>/dev/null || true;
+      openstack router delete vrouter 2>/dev/null || true;
+      openstack subnet delete private-net 2>/dev/null || true;
+      openstack network delete private 2>/dev/null || true;
+      openstack subnet delete public-net 2>/dev/null || true;
+      openstack network delete public 2>/dev/null || true;
+      openstack image delete centos10-image 2>/dev/null || true;
+      openstack flavor delete migrate 2>/dev/null || true;
+      openstack keypair delete bastion_key 2>/dev/null || true;
+      openstack security group delete basic 2>/dev/null || true;
+      "
+  ignore_errors: true
+  delegate_to: bastion
+
+- name: Clean up working directories on bastion
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+  - "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
+  - "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}"
+  - "{{ ansible_env.HOME }}/conversion-host-info.txt"
+  - "{{ ansible_env.HOME }}/setup-conversion-host.sh"
+  - "{{ ansible_env.HOME }}/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+  delegate_to: bastion
+
+- name: Report removal completion
+  ansible.builtin.debug:
+    msg: "VMware Migration Toolkit AAP resources have been removed."
