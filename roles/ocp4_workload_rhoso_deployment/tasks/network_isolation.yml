@@ -2,19 +2,19 @@
 - name: Apply NodeNetworkConfigurationPolicy for worker node 1
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-nncp-w1.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-nncp-w1.yaml"
   delegate_to: bastion
 
 - name: Apply NodeNetworkConfigurationPolicy for worker node 2
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-nncp-w2.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-nncp-w2.yaml"
   delegate_to: bastion
 
 - name: Apply NodeNetworkConfigurationPolicy for worker node 3
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-nncp-w3.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-nncp-w3.yaml"
   delegate_to: bastion
 
 - name: Wait for all NNCPs to be created
@@ -55,7 +55,7 @@
 - name: Apply NetworkAttachmentDefinitions for isolated networks
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-netattach.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-netattach.yaml"
   delegate_to: bastion
 
 - name: Wait for MetalLB additional CRDs
@@ -75,7 +75,7 @@
 - name: Apply MetalLB IP address pools
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-metal-lb-ip-address-pools.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-metal-lb-ip-address-pools.yaml"
   retries: 5
   delay: 10
   delegate_to: bastion
@@ -83,7 +83,7 @@
 - name: Apply MetalLB L2 advertisements
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-metal-lb-l2-advertisements.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-metal-lb-l2-advertisements.yaml"
   retries: 5
   delay: 10
   delegate_to: bastion

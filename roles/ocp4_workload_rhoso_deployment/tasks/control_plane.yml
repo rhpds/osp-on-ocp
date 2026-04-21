@@ -1,7 +1,7 @@
 ---
 - name: Read Cinder NFS configuration file
   ansible.builtin.slurp:
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/nfs-cinder-conf"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/nfs-cinder-conf"
   register: _ocp4_workload_rhoso_deployment_nfs_cinder_conf
   delegate_to: bastion
 
@@ -33,7 +33,7 @@
 - name: Create OpenStack Control Plane
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-ctlplane-deploy.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-ctlplane-deploy.yaml"
   retries: 5
   delay: 10
   delegate_to: bastion

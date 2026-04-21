@@ -1,7 +1,7 @@
 ---
 - name: Create working directory for OpenStack files
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}"
+    path: "{{ ocp4_workload_rhoso_deployment_workdir }}"
     state: directory
     mode: "0755"
   delegate_to: bastion
@@ -9,7 +9,7 @@
 - name: Copy OpenStack configuration files to working directory
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/{{ item }}"
+    dest: "{{ ocp4_workload_rhoso_deployment_workdir }}/{{ item }}"
     mode: "0644"
   loop: "{{ ocp4_workload_rhoso_deployment_content_files }}"
   delegate_to: bastion
@@ -32,7 +32,7 @@
 
 - name: Replace UUID placeholder with guid in manifest files
   ansible.builtin.replace:
-    path: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/{{ item }}"
+    path: "{{ ocp4_workload_rhoso_deployment_workdir }}/{{ item }}"
     regexp: "UUID"
     replace: "{{ ocp4_workload_rhoso_deployment_guid }}"
   loop: "{{ ocp4_workload_rhoso_deployment_uuid_replacement_files }}"
@@ -40,7 +40,7 @@
 
 - name: Replace external IP placeholders for worker nodes
   ansible.builtin.replace:
-    path: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/{{ item.file }}"
+    path: "{{ ocp4_workload_rhoso_deployment_workdir }}/{{ item.file }}"
     regexp: "{{ item.placeholder }}"
     replace: "{{ item.value }}"
   loop:
@@ -58,7 +58,7 @@
 - name: Apply OpenStack operator OperatorGroup and Subscription
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-openstack-operator.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-openstack-operator.yaml"
   delegate_to: bastion
 
 - name: Wait for OpenStack operator install plan
@@ -114,7 +114,7 @@
 - name: Initialize the OpenStack operator
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-openstack-operator-init.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-openstack-operator-init.yaml"
   delegate_to: bastion
 
 - name: Wait for OpenStack operator to be ready

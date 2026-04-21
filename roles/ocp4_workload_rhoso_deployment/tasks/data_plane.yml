@@ -2,7 +2,7 @@
 - name: Apply data plane network configuration
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-dataplane-netconfig.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-dataplane-netconfig.yaml"
   delegate_to: bastion
 
 - name: Set hostname for compute node
@@ -90,7 +90,7 @@
 
 - name: Generate nova migration SSH key pair
   community.crypto.openssh_keypair:
-    path: "{{ ansible_env.HOME }}/nova-migration-key"
+    path: "{{ ocp4_workload_rhoso_deployment_workdir }}/nova-migration-key"
     type: ecdsa
     size: 521
     force: false
@@ -101,8 +101,8 @@
     src: "{{ item }}"
   register: _ocp4_workload_rhoso_deployment_nova_keys
   loop:
-  - "{{ ansible_env.HOME }}/nova-migration-key"
-  - "{{ ansible_env.HOME }}/nova-migration-key.pub"
+  - "{{ ocp4_workload_rhoso_deployment_workdir }}/nova-migration-key"
+  - "{{ ocp4_workload_rhoso_deployment_workdir }}/nova-migration-key.pub"
   delegate_to: bastion
 
 - name: Create nova migration SSH key secret
@@ -193,7 +193,7 @@
 - name: Apply data plane node set
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-dataplane-node-set-deploy.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-dataplane-node-set-deploy.yaml"
   retries: 5
   delay: 10
   delegate_to: bastion
@@ -201,7 +201,7 @@
 - name: Apply data plane deployment
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-dataplane-deployment.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-dataplane-deployment.yaml"
   retries: 5
   delay: 10
   delegate_to: bastion
@@ -236,7 +236,7 @@
 
 - name: Display Data Plane Deployment status
   ansible.builtin.debug:
-    msg: |
+    msg: |-
       === OpenStack Data Plane Deployment Status ===
       Message: {{ _ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('message', 'No message') }}
       Conditions: {{ _ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('conditions', []) | map(attribute='type') | list }}
