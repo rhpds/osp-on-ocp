@@ -25,11 +25,13 @@ ocp4_workload_rhoso_deployment_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_pa
 ocp4_workload_rhoso_deployment_nfs_host: "nfsserver"
 ocp4_workload_rhoso_deployment_compute_host: "compute01"
 
-# NFS server SSH access from the bastion
+# SSH access from the bastion to cluster-internal VMs.
 # The EE cannot resolve cluster-internal hostnames directly;
-# all NFS tasks are proxied through the bastion.
+# all VM tasks are proxied through the bastion.
 ocp4_workload_rhoso_deployment_nfs_ssh_user: "cloud-user"
 ocp4_workload_rhoso_deployment_nfs_ssh_key: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
+ocp4_workload_rhoso_deployment_compute_ssh_user: "cloud-user"
+ocp4_workload_rhoso_deployment_compute_ssh_key: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
 
 # ============================================================================
 # Content files — OpenStack YAML manifests shipped in the role's files/ dir.
