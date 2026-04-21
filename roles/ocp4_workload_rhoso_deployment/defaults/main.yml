@@ -26,9 +26,10 @@ ocp4_workload_rhoso_deployment_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_pa
 ocp4_workload_rhoso_deployment_files_directory: "openstack-files"
 
 # Full working directory path on the bastion.
-# Override this variable to use a custom absolute path.
-# By default resolves to $HOME/openstack-files on the bastion host.
-ocp4_workload_rhoso_deployment_workdir: "{{ ansible_facts['env']['HOME'] }}/{{ ocp4_workload_rhoso_deployment_files_directory }}"
+# Uses /tmp to ensure it is writable by any SSH connection user,
+# regardless of whether the EE runs as root or a regular user.
+# Override to use a different absolute path.
+ocp4_workload_rhoso_deployment_workdir: "/tmp/{{ ocp4_workload_rhoso_deployment_files_directory }}"
 
 # Manifest files shipped under roles/ocp4_workload_rhoso_deployment/files/
 ocp4_workload_rhoso_deployment_content_files:
