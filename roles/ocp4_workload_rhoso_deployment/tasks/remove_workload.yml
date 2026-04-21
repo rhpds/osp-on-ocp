@@ -101,7 +101,7 @@
 
 - name: Clean up working directory on bastion
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}"
+    path: "{{ ocp4_workload_rhoso_deployment_workdir }}"
     state: absent
   delegate_to: bastion
 
