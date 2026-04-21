@@ -20,6 +20,12 @@ ocp4_workload_rhoso_deployment_bastion_ssh_private_key: "{{ bastion_ssh_key_path
 ocp4_workload_rhoso_deployment_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/bastion_' ~ guid ~ '.pub') }}"
 
 # ============================================================================
+# Inventory hostnames — override if your inventory uses different names
+# ============================================================================
+ocp4_workload_rhoso_deployment_nfs_host: "nfsserver"
+ocp4_workload_rhoso_deployment_compute_host: "compute01"
+
+# ============================================================================
 # Content files — OpenStack YAML manifests shipped in the role's files/ dir.
 # The role copies these to a working directory on the bastion, then applies them.
 # ============================================================================
