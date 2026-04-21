@@ -5,29 +5,20 @@
     src: "{{ ocp4_workload_rhoso_deployment_workdir }}/osp-ng-dataplane-netconfig.yaml"
   delegate_to: bastion
 
-# compute01 tasks are proxied through the bastion (same pattern as nfsserver)
-# because the EE cannot resolve cluster-internal hostnames directly.
-
 - name: Set hostname for compute node
-  ansible.builtin.command:
-    cmd: >-
-      ssh -i {{ ocp4_workload_rhoso_deployment_compute_ssh_key }}
-      -o StrictHostKeyChecking=no
-      {{ ocp4_workload_rhoso_deployment_compute_ssh_user }}@{{ ocp4_workload_rhoso_deployment_compute_host }}
-      "sudo hostnamectl set-hostname {{ ocp4_workload_rhoso_deployment_compute_nodes[0].hostname }}"
-  delegate_to: bastion
-  changed_when: true
+  ansible.builtin.hostname:
+    name: "{{ ocp4_workload_rhoso_deployment_compute_nodes[0].hostname }}"
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_compute_host }}"
+  become: true
 
 - name: Configure static eth1 interface for control plane
   ansible.builtin.command:
     cmd: >-
-      ssh -i {{ ocp4_workload_rhoso_deployment_compute_ssh_key }}
-      -o StrictHostKeyChecking=no
-      {{ ocp4_workload_rhoso_deployment_compute_ssh_user }}@{{ ocp4_workload_rhoso_deployment_compute_host }}
-      "sudo nmcli con add con-name 'static-eth1' ifname eth1
-       type ethernet ip4 {{ ocp4_workload_rhoso_deployment_compute_nodes[0].ctlplane_ip }}/24
-       ipv4.dns '172.22.0.89'"
-  delegate_to: bastion
+      nmcli con add con-name "static-eth1" ifname eth1
+      type ethernet ip4 {{ ocp4_workload_rhoso_deployment_compute_nodes[0].ctlplane_ip }}/24
+      ipv4.dns "172.22.0.89"
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_compute_host }}"
+  become: true
   register: _ocp4_workload_rhoso_deployment_compute_eth1
   changed_when: >-
     'Connection successfully added' in
@@ -38,23 +29,18 @@
 
 - name: Activate static-eth1 connection on compute
   ansible.builtin.command:
-    cmd: >-
-      ssh -i {{ ocp4_workload_rhoso_deployment_compute_ssh_key }}
-      -o StrictHostKeyChecking=no
-      {{ ocp4_workload_rhoso_deployment_compute_ssh_user }}@{{ ocp4_workload_rhoso_deployment_compute_host }}
-      "sudo nmcli con up 'static-eth1'"
-  delegate_to: bastion
+    cmd: nmcli con up "static-eth1"
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_compute_host }}"
+  become: true
   changed_when: true
 
 - name: Configure eth0 DHCP connection on compute
   ansible.builtin.command:
     cmd: >-
-      ssh -i {{ ocp4_workload_rhoso_deployment_compute_ssh_key }}
-      -o StrictHostKeyChecking=no
-      {{ ocp4_workload_rhoso_deployment_compute_ssh_user }}@{{ ocp4_workload_rhoso_deployment_compute_host }}
-      "sudo nmcli con add con-name 'eth0-dhcp' ifname eth0
-       type ethernet ipv4.method auto ipv6.method ignore"
-  delegate_to: bastion
+      nmcli con add con-name "eth0-dhcp" ifname eth0
+      type ethernet ipv4.method auto ipv6.method ignore
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_compute_host }}"
+  become: true
   register: _ocp4_workload_rhoso_deployment_compute_eth0
   changed_when: >-
     'Connection successfully added' in
@@ -65,22 +51,16 @@
 
 - name: Activate eth0-dhcp connection on compute
   ansible.builtin.command:
-    cmd: >-
-      ssh -i {{ ocp4_workload_rhoso_deployment_compute_ssh_key }}
-      -o StrictHostKeyChecking=no
-      {{ ocp4_workload_rhoso_deployment_compute_ssh_user }}@{{ ocp4_workload_rhoso_deployment_compute_host }}
-      "sudo nmcli con up 'eth0-dhcp'"
-  delegate_to: bastion
+    cmd: nmcli con up "eth0-dhcp"
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_compute_host }}"
+  become: true
   changed_when: true
 
 - name: Set stable ID for eth0 connection on compute
   ansible.builtin.command:
-    cmd: >-
-      ssh -i {{ ocp4_workload_rhoso_deployment_compute_ssh_key }}
-      -o StrictHostKeyChecking=no
-      {{ ocp4_workload_rhoso_deployment_compute_ssh_user }}@{{ ocp4_workload_rhoso_deployment_compute_host }}
-      "sudo nmcli con mod eth0-dhcp connection.stable-id user-set"
-  delegate_to: bastion
+    cmd: nmcli con mod eth0-dhcp connection.stable-id user-set
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_compute_host }}"
+  become: true
   changed_when: true
 
 - name: Read SSH key files
