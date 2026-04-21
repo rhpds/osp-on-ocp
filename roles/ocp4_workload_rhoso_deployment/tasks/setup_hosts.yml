@@ -1,38 +1,21 @@
 ---
-# Resolve cluster-internal VM hostnames from the bastion (which has cluster DNS)
-# and update their inventory entries so the EE can reach them via ProxyJump.
-# This runs once at the start of the workload and makes all delegate_to tasks work natively.
+# AgnosticD (infra-openshift-cnv-create-inventory) already adds isolated VMs
+# to inventory with:
+#   ansible_ssh_host: <vm_name>   (e.g. nfsserver, compute01)
+#   public_ip_address: <bastion external SSH hostname>
+#   bastion_ssh_port: <bastion NodePort>
+#   ansible_user: cloud-user
+#
+# The only missing piece is ansible_ssh_common_args with ProxyJump.
+# With ProxyJump, the destination hostname is resolved by the JUMP HOST (bastion),
+# not by the EE — so nfsserver/compute01 resolve correctly via cluster DNS.
 
-- name: Resolve {{ ocp4_workload_rhoso_deployment_nfs_host }} IP from bastion DNS
-  ansible.builtin.command:
-    cmd: "getent hosts {{ ocp4_workload_rhoso_deployment_nfs_host }}"
-  delegate_to: bastion
-  register: _ocp4_workload_rhoso_deployment_nfs_addr
-  changed_when: false
-
-- name: Resolve {{ ocp4_workload_rhoso_deployment_compute_host }} IP from bastion DNS
-  ansible.builtin.command:
-    cmd: "getent hosts {{ ocp4_workload_rhoso_deployment_compute_host }}"
-  delegate_to: bastion
-  register: _ocp4_workload_rhoso_deployment_compute_addr
-  changed_when: false
-
-- name: Update {{ ocp4_workload_rhoso_deployment_nfs_host }} inventory with resolved IP and bastion ProxyJump
+- name: Configure isolated VM connections with bastion ProxyJump
   ansible.builtin.add_host:
-    name: "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
-    ansible_host: "{{ _ocp4_workload_rhoso_deployment_nfs_addr.stdout.split()[0] }}"
-    ansible_user: "{{ ocp4_workload_rhoso_deployment_nfs_ssh_user }}"
-    ansible_ssh_private_key_file: "{{ ocp4_workload_rhoso_deployment_nfs_ssh_key }}"
+    name: "{{ item }}"
     ansible_ssh_common_args: >-
       -o StrictHostKeyChecking=no
-      -o ProxyJump={{ ansible_user }}@{{ ansible_host }}:{{ ansible_port | default(22) }}
-
-- name: Update {{ ocp4_workload_rhoso_deployment_compute_host }} inventory with resolved IP and bastion ProxyJump
-  ansible.builtin.add_host:
-    name: "{{ ocp4_workload_rhoso_deployment_compute_host }}"
-    ansible_host: "{{ _ocp4_workload_rhoso_deployment_compute_addr.stdout.split()[0] }}"
-    ansible_user: "{{ ocp4_workload_rhoso_deployment_compute_ssh_user }}"
-    ansible_ssh_private_key_file: "{{ ocp4_workload_rhoso_deployment_compute_ssh_key }}"
-    ansible_ssh_common_args: >-
-      -o StrictHostKeyChecking=no
-      -o ProxyJump={{ ansible_user }}@{{ ansible_host }}:{{ ansible_port | default(22) }}
+      -o ProxyJump={{ hostvars[item]['ansible_user'] | default('cloud-user') }}@{{ hostvars[item]['public_ip_address'] }}:{{ hostvars[item]['bastion_ssh_port'] }}
+  loop:
+  - "{{ ocp4_workload_rhoso_deployment_nfs_host }}"
+  - "{{ ocp4_workload_rhoso_deployment_compute_host }}"

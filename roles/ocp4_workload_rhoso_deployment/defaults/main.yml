@@ -20,18 +20,10 @@ ocp4_workload_rhoso_deployment_bastion_ssh_private_key: "{{ bastion_ssh_key_path
 ocp4_workload_rhoso_deployment_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/bastion_' ~ guid ~ '.pub') }}"
 
 # ============================================================================
-# Inventory hostnames — override if your inventory uses different names
+# Inventory hostnames — must match what AgnosticD sets in add_host
 # ============================================================================
 ocp4_workload_rhoso_deployment_nfs_host: "nfsserver"
 ocp4_workload_rhoso_deployment_compute_host: "compute01"
-
-# SSH access from the bastion to cluster-internal VMs.
-# The EE cannot resolve cluster-internal hostnames directly;
-# all VM tasks are proxied through the bastion.
-ocp4_workload_rhoso_deployment_nfs_ssh_user: "cloud-user"
-ocp4_workload_rhoso_deployment_nfs_ssh_key: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
-ocp4_workload_rhoso_deployment_compute_ssh_user: "cloud-user"
-ocp4_workload_rhoso_deployment_compute_ssh_key: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
 
 # ============================================================================
 # Content files — OpenStack YAML manifests shipped in the role's files/ dir.
@@ -40,8 +32,7 @@ ocp4_workload_rhoso_deployment_compute_ssh_key: "~/.ssh/{{ ocp4_workload_rhoso_d
 ocp4_workload_rhoso_deployment_files_directory: "openstack-files"
 
 # Full working directory path on the bastion.
-# Uses /tmp to ensure it is writable by any SSH connection user,
-# regardless of whether the EE runs as root or a regular user.
+# Uses /tmp to ensure it is writable by any SSH connection user.
 # Override to use a different absolute path.
 ocp4_workload_rhoso_deployment_workdir: "/tmp/{{ ocp4_workload_rhoso_deployment_files_directory }}"
 
