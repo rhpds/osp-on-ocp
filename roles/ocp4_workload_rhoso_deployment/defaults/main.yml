@@ -20,12 +20,31 @@ ocp4_workload_rhoso_deployment_bastion_ssh_private_key: "{{ bastion_ssh_key_path
 ocp4_workload_rhoso_deployment_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/bastion_' ~ guid ~ '.pub') }}"
 
 # ============================================================================
+# Delegation hosts — inventory hostnames for delegate_to.
+# ============================================================================
+ocp4_workload_rhoso_deployment_nfs_server_host: "nfsserver"
+ocp4_workload_rhoso_deployment_compute_host: "{{ ocp4_workload_rhoso_deployment_compute_nodes[0].name }}"
+
+# ============================================================================
+# Working directory on the bastion.
+# /tmp is always writable regardless of connection user.
+# ============================================================================
+ocp4_workload_rhoso_deployment_bastion_home: "/tmp"
+ocp4_workload_rhoso_deployment_bastion_working_dir: "/tmp/openstack-files"
+
+# SSH key on bastion for connecting to internal VMs (nfsserver, compute01)
+# Default pattern: ~/.ssh/<guid>key.pem
+ocp4_workload_rhoso_deployment_vm_ssh_key: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
+ocp4_workload_rhoso_deployment_vm_ssh_user: "cloud-user"
+
+# Virtualenv on bastion with ansible + kubernetes.core + community.crypto
+ocp4_workload_rhoso_deployment_bastion_venv: "/opt/virtualenvs/k8s"
+
+# ============================================================================
 # Content files — OpenStack YAML manifests shipped in the role's files/ dir.
-# The role copies these to a working directory on the bastion, then applies them.
 # ============================================================================
 ocp4_workload_rhoso_deployment_files_directory: "openstack-files"
 
-# Manifest files shipped under roles/ocp4_workload_rhoso_deployment/files/
 ocp4_workload_rhoso_deployment_content_files:
 - osp-ng-nncp-w1.yaml
 - osp-ng-nncp-w2.yaml
@@ -43,7 +62,6 @@ ocp4_workload_rhoso_deployment_content_files:
 - osp-ng-libvirt-secret.yaml
 - nfs-cinder-conf
 
-# Files that contain the UUID placeholder to be replaced with guid
 ocp4_workload_rhoso_deployment_uuid_replacement_files:
 - osp-ng-nncp-w1.yaml
 - osp-ng-nncp-w2.yaml
@@ -150,7 +168,6 @@ ocp4_workload_rhoso_deployment_bastion_external_ip: "{{ rhoso_external_ip_bastio
 # ============================================================================
 ocp4_workload_rhoso_deployment_registry_username: "{{ registry_username | default('') }}"
 ocp4_workload_rhoso_deployment_registry_password: "{{ registry_password | default('') }}"
-# Activation key registration (dataplane subscription-manager Secret)
 ocp4_workload_rhoso_deployment_rhc_activation_keys: "{{ rhc_activation_keys | default([]) }}"
 ocp4_workload_rhoso_deployment_rhc_organization: "{{ rhc_organization | default('') }}"
 
@@ -158,7 +175,7 @@ ocp4_workload_rhoso_deployment_rhc_organization: "{{ rhc_organization | default(
 ocp4_workload_rhoso_deployment_default_password_b64: "b3BlbnN0YWNr"
 
 # ============================================================================
-# NNCP worker node names (used to check NNCP status)
+# NNCP worker node names
 # ============================================================================
 ocp4_workload_rhoso_deployment_nncp_names:
 - osp-multi-nic-worker-ocp4-worker1

@@ -1,0 +1,85 @@
+---
+# Run the RHOSO deployment from the bastion where:
+# - cluster-internal hostnames (nfsserver, compute01) resolve via cluster DNS
+# - /opt/virtualenvs/k8s has ansible + kubernetes.core + community.crypto
+# - ~/.kube/config is available for kubernetes.core modules
+# - SSH key ~/.ssh/<guid>key.pem can reach internal VMs directly
+
+- name: Create execution directory on bastion
+  ansible.builtin.file:
+    path: /tmp/rhoso-exec
+    state: directory
+    mode: "0755"
+  delegate_to: bastion
+
+- name: Copy role to bastion
+  ansible.builtin.copy:
+    src: "{{ role_path }}/"
+    dest: /tmp/rhoso-exec/role/
+  delegate_to: bastion
+
+- name: Write inventory to bastion
+  ansible.builtin.copy:
+    content: |
+      [bastions]
+      localhost ansible_connection=local ansible_python_interpreter={{ ocp4_workload_rhoso_deployment_bastion_venv }}/bin/python3
+
+      [nfsservers]
+      {{ ocp4_workload_rhoso_deployment_nfs_server_host }} ansible_user={{ ocp4_workload_rhoso_deployment_vm_ssh_user }} ansible_ssh_private_key_file={{ ocp4_workload_rhoso_deployment_vm_ssh_key }} ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+      [isolated]
+      {{ ocp4_workload_rhoso_deployment_nfs_server_host }}
+      {{ ocp4_workload_rhoso_deployment_compute_host }} ansible_user={{ ocp4_workload_rhoso_deployment_vm_ssh_user }} ansible_ssh_private_key_file={{ ocp4_workload_rhoso_deployment_vm_ssh_key }} ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+    dest: /tmp/rhoso-exec/inventory
+  delegate_to: bastion
+
+- name: Write vars file to bastion
+  ansible.builtin.copy:
+    content: >
+      {{
+        vars
+        | dict2items
+        | selectattr('key', 'match', 'ocp4_workload_rhoso_deployment_.*|^ACTION$|^guid$|^output_dir$')
+        | list
+        | items2dict
+        | to_nice_yaml
+      }}
+    dest: /tmp/rhoso-exec/vars.yml
+  no_log: true
+  delegate_to: bastion
+
+- name: Write playbook to bastion
+  ansible.builtin.copy:
+    content: |
+      ---
+      - name: RHOSO Deployment (running from bastion)
+        hosts: bastions
+        gather_facts: true
+        roles:
+        - role: /tmp/rhoso-exec/role
+    dest: /tmp/rhoso-exec/playbook.yml
+  delegate_to: bastion
+
+- name: Run deployment from bastion using k8s virtualenv
+  ansible.builtin.command:
+    cmd: >-
+      {{ ocp4_workload_rhoso_deployment_bastion_venv }}/bin/ansible-playbook
+      /tmp/rhoso-exec/playbook.yml
+      -i /tmp/rhoso-exec/inventory
+      -e @/tmp/rhoso-exec/vars.yml
+      -e ACTION={{ ACTION }}
+      -e guid={{ guid }}
+  register: _ocp4_workload_rhoso_deployment_bastion_run
+  delegate_to: bastion
+  environment:
+    KUBECONFIG: "~/.kube/config"
+
+- name: Display deployment output
+  ansible.builtin.debug:
+    var: _ocp4_workload_rhoso_deployment_bastion_run.stdout_lines
+
+- name: Clean up execution directory
+  ansible.builtin.file:
+    path: /tmp/rhoso-exec
+    state: absent
+  delegate_to: bastion
