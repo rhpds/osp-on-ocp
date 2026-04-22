@@ -4,8 +4,8 @@ ocp4_workload_bastion_student_ssh_keys_user: "{{ bastion_student_user_name | def
 ocp4_workload_bastion_student_ssh_keys_group: users
 
 # Bastion SSH key paths (must match the bastion role defaults)
-ocp4_workload_bastion_student_ssh_keys_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/bastion_' ~ guid) }}"
-ocp4_workload_bastion_student_ssh_keys_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/bastion_' ~ guid ~ '.pub') }}"
+ocp4_workload_bastion_student_ssh_keys_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/{{ guid }}key.pem) }}"
+ocp4_workload_bastion_student_ssh_keys_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/{{ guid }}key.pub') }}"
 ocp4_workload_bastion_student_ssh_keys_ssh_config: ~/.ssh/config
 
 # Remote user on isolated instances (user to SSH as)

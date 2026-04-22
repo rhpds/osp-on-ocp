@@ -12,7 +12,7 @@ ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_configure_aap_api: true
 # Lab environment
 # ============================================================================
 ocp4_workload_rhoso_migration_toolkit_aap_setup_guid: "{{ guid }}"
-ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/bastion_' ~ guid) }}"
+ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/{{ guid }}key.pem) }}"
 
 # ============================================================================
 # AAP configuration
