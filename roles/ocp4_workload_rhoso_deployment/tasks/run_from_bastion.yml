@@ -22,7 +22,6 @@
   ansible.builtin.copy:
     content: |
       [bastions]
-      localhost ansible_connection=local ansible_python_interpreter={{ ocp4_workload_rhoso_deployment_bastion_venv }}/bin/python3
       bastion ansible_connection=local ansible_python_interpreter={{ ocp4_workload_rhoso_deployment_bastion_venv }}/bin/python3
 
       [nfsservers]
@@ -55,7 +54,7 @@
       ---
       # This playbook runs workload.yml directly (NOT via the role)
       # to avoid triggering run_from_bastion.yml again (infinite loop).
-      # "bastion" in inventory is ansible_connection=local so all
+      # 'bastion' in inventory is ansible_connection=local so all
       # delegate_to: bastion tasks run locally on the bastion.
       - name: RHOSO Deployment (running from bastion)
         hosts: bastions
