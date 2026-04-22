@@ -52,11 +52,14 @@
   ansible.builtin.copy:
     content: |
       ---
+      # This playbook runs workload.yml directly (NOT via the role)
+      # to avoid triggering run_from_bastion.yml again (infinite loop).
       - name: RHOSO Deployment (running from bastion)
         hosts: bastions
         gather_facts: true
-        roles:
-        - role: /tmp/rhoso-exec/role
+        tasks:
+        - name: Run RHOSO workload tasks
+          ansible.builtin.include_tasks: /tmp/rhoso-exec/role/tasks/workload.yml
     dest: /tmp/rhoso-exec/playbook.yml
   delegate_to: bastion
 
