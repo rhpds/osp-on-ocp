@@ -55,16 +55,19 @@
   delegate_to: bastion
 
 - name: Write vars file to bastion
+  vars:
+    _var_names: >-
+      {{ vars.keys()
+         | select('match', 'ocp4_workload_rhoso_deployment_.*')
+         | list + (['ACTION', 'guid']
+                    + (['output_dir'] if output_dir is defined else [])) }}
   ansible.builtin.copy:
-    content: >
-      {{
-        vars
-        | dict2items
-        | selectattr('key', 'match', 'ocp4_workload_rhoso_deployment_.*|^ACTION$|^guid$|^output_dir$')
-        | list
-        | items2dict
-        | to_nice_yaml
-      }}
+    content: |-
+      {%- set ns = namespace(d={}) -%}
+      {%- for k in _var_names -%}
+      {%-   set ns.d = ns.d | combine({k: lookup('vars', k)}) -%}
+      {%- endfor -%}
+      {{ ns.d | to_nice_yaml }}
     dest: /tmp/rhoso-exec/vars.yml
   no_log: true
   delegate_to: bastion
