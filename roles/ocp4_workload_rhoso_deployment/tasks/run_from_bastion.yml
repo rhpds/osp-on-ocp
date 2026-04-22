@@ -18,6 +18,27 @@
     dest: /tmp/rhoso-exec/role/
   delegate_to: bastion
 
+- name: Ensure cloud-user .ssh directory exists
+  ansible.builtin.file:
+    path: /home/cloud-user/.ssh
+    state: directory
+    mode: "0700"
+    owner: cloud-user
+    group: cloud-user
+  become: true
+  delegate_to: bastion
+
+- name: Copy VM SSH key to cloud-user .ssh for bastion playbook access
+  ansible.builtin.copy:
+    src: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
+    dest: "/home/cloud-user/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
+    remote_src: true
+    mode: "0600"
+    owner: cloud-user
+    group: cloud-user
+  become: true
+  delegate_to: bastion
+
 - name: Write inventory to bastion
   ansible.builtin.copy:
     content: |
