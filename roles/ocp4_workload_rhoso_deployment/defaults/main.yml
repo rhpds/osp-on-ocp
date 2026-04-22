@@ -32,8 +32,13 @@ ocp4_workload_rhoso_deployment_compute_host: "{{ ocp4_workload_rhoso_deployment_
 ocp4_workload_rhoso_deployment_bastion_home: "/tmp"
 ocp4_workload_rhoso_deployment_bastion_working_dir: "/tmp/openstack-files"
 
+# Path to the role's files/ directory.
+# In normal EE context role_path is defined. When running from the bastion
+# via run_from_bastion.yml, this is overridden with the absolute path
+# /tmp/rhoso-exec/role/files via the -e argument.
+ocp4_workload_rhoso_deployment_role_files_path: "{{ role_path }}/files"
+
 # SSH key on bastion for connecting to internal VMs (nfsserver, compute01)
-# Default pattern: ~/.ssh/<guid>key.pem
 ocp4_workload_rhoso_deployment_vm_ssh_key: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
 ocp4_workload_rhoso_deployment_vm_ssh_user: "cloud-user"
 

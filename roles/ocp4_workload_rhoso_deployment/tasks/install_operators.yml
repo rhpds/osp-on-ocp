@@ -8,7 +8,7 @@
 
 - name: Copy OpenStack configuration files to working directory
   ansible.builtin.copy:
-    src: "{{ ocp4_workload_rhoso_deployment_role_files_path | default(role_path + '/files') }}/{{ item }}"
+    src: "{{ ocp4_workload_rhoso_deployment_role_files_path }}/{{ item }}"
     dest: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/{{ item }}"
     mode: "0644"
   loop: "{{ ocp4_workload_rhoso_deployment_content_files }}"
