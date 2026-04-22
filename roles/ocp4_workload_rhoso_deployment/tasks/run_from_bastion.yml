@@ -80,6 +80,7 @@
       -e @/tmp/rhoso-exec/vars.yml
       -e ACTION={{ ACTION }}
       -e guid={{ guid }}
+      -e ocp4_workload_rhoso_deployment_role_files_path=/tmp/rhoso-exec/role/files
   register: _ocp4_workload_rhoso_deployment_bastion_run
   delegate_to: bastion
   environment:
