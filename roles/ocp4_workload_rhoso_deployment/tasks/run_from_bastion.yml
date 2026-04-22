@@ -54,11 +54,17 @@
       ---
       # This playbook runs workload.yml directly (NOT via the role)
       # to avoid triggering run_from_bastion.yml again (infinite loop).
-      # 'bastion' in inventory is ansible_connection=local so all
-      # delegate_to: bastion tasks run locally on the bastion.
+      # 'bastion' is ansible_connection=local so delegate_to: bastion runs locally.
+      # Handlers are defined inline since role handlers are not loaded
+      # when using include_tasks without a full role context.
       - name: RHOSO Deployment (running from bastion)
         hosts: bastions
         gather_facts: true
+        handlers:
+        - name: Restart nfs-server
+          ansible.builtin.raw: systemctl restart nfs-server
+          delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_server_host }}"
+          become: true
         tasks:
         - name: Run RHOSO workload tasks
           ansible.builtin.include_tasks: /tmp/rhoso-exec/role/tasks/workload.yml
