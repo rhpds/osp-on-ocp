@@ -1,7 +1,7 @@
 ---
 - name: Create working directory for migration configuration
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}"
+    path: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}"
     state: directory
     mode: '0755'
   delegate_to: bastion
@@ -60,7 +60,7 @@
 - name: Create os_migrate configuration file for AAP
   ansible.builtin.template:
     src: os_migrate_for_aap.yaml.j2
-    dest: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}/os_migrate_for_aap.yaml"
+    dest: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}/os_migrate_for_aap.yaml"
     mode: '0644'
   delegate_to: bastion
 

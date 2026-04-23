@@ -91,11 +91,11 @@
     path: "{{ item }}"
     state: absent
   loop:
-  - "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
-  - "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}"
-  - "{{ ansible_env.HOME }}/conversion-host-info.txt"
-  - "{{ ansible_env.HOME }}/setup-conversion-host.sh"
-  - "{{ ansible_env.HOME }}/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+  - "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
+  - "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}"
+  - "~/conversion-host-info.txt"
+  - "~/setup-conversion-host.sh"
+  - "~/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
   delegate_to: bastion
 
 - name: Report removal completion
