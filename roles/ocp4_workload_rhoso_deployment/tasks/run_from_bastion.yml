@@ -1,0 +1,162 @@
+---
+# Run the RHOSO deployment from the bastion where:
+# - cluster-internal hostnames (nfsserver, compute01) resolve via cluster DNS
+# - /opt/virtualenvs/k8s has ansible + kubernetes.core + community.crypto
+# - ~/.kube/config is available for kubernetes.core modules
+# - SSH key ~/.ssh/<guid>key.pem can reach internal VMs directly
+
+- name: Create execution directory on bastion
+  ansible.builtin.file:
+    path: /tmp/rhoso-exec
+    state: directory
+    mode: "0755"
+  delegate_to: bastion
+
+- name: Copy role to bastion
+  ansible.builtin.copy:
+    src: "{{ role_path }}/"
+    dest: /tmp/rhoso-exec/role/
+  delegate_to: bastion
+
+- name: Ensure cloud-user .ssh directory exists
+  ansible.builtin.file:
+    path: /home/cloud-user/.ssh
+    state: directory
+    mode: "0700"
+    owner: cloud-user
+    group: cloud-user
+  become: true
+  delegate_to: bastion
+
+- name: Copy VM SSH private key to cloud-user .ssh for bastion playbook access
+  ansible.builtin.copy:
+    src: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
+    dest: "/home/cloud-user/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
+    remote_src: true
+    mode: "0600"
+    owner: cloud-user
+    group: cloud-user
+  become: true
+  delegate_to: bastion
+
+- name: Derive public key from private key if .pub file does not exist
+  ansible.builtin.shell:
+    cmd: >-
+      test -f ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub ||
+      ssh-keygen -y -f ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem
+      > ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub
+  become: true
+  become_user: cloud-user
+  delegate_to: bastion
+  changed_when: false
+
+- name: Copy VM SSH public key to cloud-user .ssh
+  ansible.builtin.copy:
+    src: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub"
+    dest: "/home/cloud-user/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub"
+    remote_src: true
+    mode: "0644"
+    owner: cloud-user
+    group: cloud-user
+  become: true
+  delegate_to: bastion
+
+- name: Write inventory to bastion
+  ansible.builtin.copy:
+    content: |
+      [bastions]
+      bastion ansible_connection=local ansible_python_interpreter={{ ocp4_workload_rhoso_deployment_bastion_venv }}/bin/python3
+
+      [nfsservers]
+      {{ ocp4_workload_rhoso_deployment_nfs_server_host }} ansible_user={{ ocp4_workload_rhoso_deployment_vm_ssh_user }} ansible_ssh_private_key_file={{ ocp4_workload_rhoso_deployment_vm_ssh_key }} ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+      [isolated]
+      {{ ocp4_workload_rhoso_deployment_nfs_server_host }}
+      {{ ocp4_workload_rhoso_deployment_compute_host }} ansible_user={{ ocp4_workload_rhoso_deployment_vm_ssh_user }} ansible_ssh_private_key_file={{ ocp4_workload_rhoso_deployment_vm_ssh_key }} ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+    dest: /tmp/rhoso-exec/inventory
+  delegate_to: bastion
+
+- name: Write vars file to bastion
+  vars:
+    _var_names: >-
+      {{ vars.keys()
+         | select('match', 'ocp4_workload_rhoso_deployment_.*')
+         | list + (['ACTION', 'guid']
+                    + (['output_dir'] if output_dir is defined else [])) }}
+  ansible.builtin.copy:
+    content: |-
+      {%- set ns = namespace(d={}) -%}
+      {%- for k in _var_names -%}
+      {%-   set ns.d = ns.d | combine({k: lookup('vars', k)}) -%}
+      {%- endfor -%}
+      {{ ns.d | to_json | from_json | to_nice_yaml }}
+    dest: /tmp/rhoso-exec/vars.yml
+  no_log: true
+  delegate_to: bastion
+
+- name: Write complex vars file with properly evaluated dicts
+  ansible.builtin.copy:
+    content: |
+      # Complex dict/list vars written using direct attribute access
+      # to avoid AnsibleMapping serialization issues with to_json|from_json.
+      # This file is passed AFTER vars.yml and overrides any broken values.
+      ocp4_workload_rhoso_deployment_worker_external_ips:
+        worker_1: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_1 }}"
+        worker_2: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_2 }}"
+        worker_3: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_3 }}"
+      ocp4_workload_rhoso_deployment_rhc_activation_keys:
+      {% for key in ocp4_workload_rhoso_deployment_rhc_activation_keys %}
+        - "{{ key }}"
+      {% endfor %}
+    dest: /tmp/rhoso-exec/complex_vars.yml
+  delegate_to: bastion
+
+- name: Write playbook to bastion
+  ansible.builtin.copy:
+    content: |
+      ---
+      # This playbook runs workload.yml directly (NOT via the role)
+      # to avoid triggering run_from_bastion.yml again (infinite loop).
+      # 'bastion' is ansible_connection=local so delegate_to: bastion runs locally.
+      # Handlers are defined inline since role handlers are not loaded
+      # when using include_tasks without a full role context.
+      - name: RHOSO Deployment (running from bastion)
+        hosts: bastions
+        gather_facts: true
+        handlers:
+        - name: Restart nfs-server
+          ansible.builtin.raw: systemctl restart nfs-server
+          delegate_to: "{{ ocp4_workload_rhoso_deployment_nfs_server_host }}"
+          become: true
+        tasks:
+        - name: Run RHOSO workload tasks
+          ansible.builtin.include_tasks: /tmp/rhoso-exec/role/tasks/workload.yml
+    dest: /tmp/rhoso-exec/playbook.yml
+  delegate_to: bastion
+
+- name: Run deployment from bastion using k8s virtualenv
+  ansible.builtin.command:
+    cmd: >-
+      {{ ocp4_workload_rhoso_deployment_bastion_venv }}/bin/ansible-playbook
+      /tmp/rhoso-exec/playbook.yml
+      -i /tmp/rhoso-exec/inventory
+      -e @/tmp/rhoso-exec/vars.yml
+      -e @/tmp/rhoso-exec/complex_vars.yml
+      -e ACTION={{ ACTION }}
+      -e guid={{ guid }}
+      -e ocp4_workload_rhoso_deployment_role_files_path=/tmp/rhoso-exec/role/files
+  register: _ocp4_workload_rhoso_deployment_bastion_run
+  delegate_to: bastion
+  environment:
+    KUBECONFIG: "~/.kube/config"
+
+- name: Display deployment output
+  ansible.builtin.debug:
+    var: _ocp4_workload_rhoso_deployment_bastion_run.stdout_lines
+
+- name: Clean up execution directory
+  ansible.builtin.file:
+    path: /tmp/rhoso-exec
+    state: absent
+  become: true
+  delegate_to: bastion

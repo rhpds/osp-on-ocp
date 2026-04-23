@@ -2,7 +2,7 @@
 - name: Create OpenStack control plane secret
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-ctlplane-secret.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-ctlplane-secret.yaml"
   delegate_to: bastion
 
 - name: Verify osp-secret was created
@@ -18,7 +18,7 @@
 - name: Create libvirt secret
   kubernetes.core.k8s:
     state: present
-    src: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_deployment_files_directory }}/osp-ng-libvirt-secret.yaml"
+    src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-libvirt-secret.yaml"
   delegate_to: bastion
 
 - name: Verify libvirt-secret was created
