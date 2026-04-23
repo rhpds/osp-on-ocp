@@ -16,14 +16,14 @@
 
 - name: Check if CentOS Stream 10 image already exists
   ansible.builtin.stat:
-    path: "{{ ansible_env.HOME }}/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    path: "~/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
   register: _ocp4_workload_migration_centos_image_file
   delegate_to: bastion
 
 - name: Download CentOS Stream 10 qcow2 image
   ansible.builtin.get_url:
     url: "https://cloud.centos.org/centos/10-stream/x86_64/images/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
-    dest: "{{ ansible_env.HOME }}/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    dest: "~/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
     mode: '0644'
   when: not _ocp4_workload_migration_centos_image_file.stat.exists
   delegate_to: bastion
@@ -35,7 +35,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
     pod: openstackclient
     remote_path: "/home/cloud-admin/bastion_{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}.pub"
-    local_path: "{{ ansible_env.HOME }}/.ssh/bastion_{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}.pub"
+    local_path: "~/.ssh/bastion_{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}.pub"
     state: to_pod
   delegate_to: bastion
 
@@ -44,7 +44,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
     pod: openstackclient
     remote_path: "/home/cloud-admin/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
-    local_path: "{{ ansible_env.HOME }}/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
+    local_path: "~/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
     state: to_pod
   delegate_to: bastion
 
@@ -52,7 +52,7 @@
 
 - name: Create conversion host setup script
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/setup-conversion-host.sh"
+    dest: "~/setup-conversion-host.sh"
     mode: '0755'
     content: |
       #!/bin/bash
@@ -150,7 +150,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
     pod: openstackclient
     remote_path: "/home/cloud-admin/setup-conversion-host.sh"
-    local_path: "{{ ansible_env.HOME }}/setup-conversion-host.sh"
+    local_path: "~/setup-conversion-host.sh"
     state: to_pod
   delegate_to: bastion
 
@@ -188,7 +188,7 @@
 
 - name: Save conversion host information
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/conversion-host-info.txt"
+    dest: "~/conversion-host-info.txt"
     mode: '0644'
     content: |
       Conversion Host Information

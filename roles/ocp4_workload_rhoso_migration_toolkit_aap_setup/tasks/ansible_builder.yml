@@ -8,14 +8,14 @@
 
 - name: Create working directory for ansible-builder
   ansible.builtin.file:
-    path: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
+    path: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
     state: directory
     mode: '0755'
   delegate_to: bastion
 
 - name: Create execution-environment.yml
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/execution-environment.yml"
+    dest: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/execution-environment.yml"
     mode: '0644'
     content: |
       ---
@@ -47,7 +47,7 @@
 
 - name: Create requirements.txt for Python dependencies
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/requirements.txt"
+    dest: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/requirements.txt"
     mode: '0644'
     content: |
       requests
@@ -57,7 +57,7 @@
 
 - name: Create requirements.yml for Ansible collections
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/requirements.yml"
+    dest: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/requirements.yml"
     mode: '0644'
     content: |
       collections:
@@ -71,7 +71,7 @@
 
 - name: Create bindep.txt for system dependencies
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/bindep.txt"
+    dest: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/bindep.txt"
     mode: '0644'
     content: |
       openssh-clients
@@ -80,7 +80,7 @@
 
 - name: Create ansible.cfg for automation hub access
   ansible.builtin.copy:
-    dest: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/ansible.cfg"
+    dest: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}/ansible.cfg"
     mode: '0644'
     content: |
       [galaxy]
@@ -118,7 +118,7 @@
     cmd: >-
       ansible-builder build
       --tag {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_name }}:{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_tag }}
-    chdir: "{{ ansible_env.HOME }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
+    chdir: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
   register: _ocp4_workload_migration_builder_output
   changed_when: "'Successfully tagged' in _ocp4_workload_migration_builder_output.stdout"
   delegate_to: bastion
