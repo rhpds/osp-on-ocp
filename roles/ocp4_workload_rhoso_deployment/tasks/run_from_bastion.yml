@@ -94,6 +94,23 @@
   no_log: true
   delegate_to: bastion
 
+- name: Write complex vars file with properly evaluated dicts
+  ansible.builtin.copy:
+    content: |
+      # Complex dict/list vars written using direct attribute access
+      # to avoid AnsibleMapping serialization issues with to_json|from_json.
+      # This file is passed AFTER vars.yml and overrides any broken values.
+      ocp4_workload_rhoso_deployment_worker_external_ips:
+        worker_1: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_1 }}"
+        worker_2: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_2 }}"
+        worker_3: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_3 }}"
+      ocp4_workload_rhoso_deployment_rhc_activation_keys:
+      {% for key in ocp4_workload_rhoso_deployment_rhc_activation_keys %}
+        - "{{ key }}"
+      {% endfor %}
+    dest: /tmp/rhoso-exec/complex_vars.yml
+  delegate_to: bastion
+
 - name: Write playbook to bastion
   ansible.builtin.copy:
     content: |
@@ -124,6 +141,7 @@
       /tmp/rhoso-exec/playbook.yml
       -i /tmp/rhoso-exec/inventory
       -e @/tmp/rhoso-exec/vars.yml
+      -e @/tmp/rhoso-exec/complex_vars.yml
       -e ACTION={{ ACTION }}
       -e guid={{ guid }}
       -e ocp4_workload_rhoso_deployment_role_files_path=/tmp/rhoso-exec/role/files
