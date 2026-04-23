@@ -16,8 +16,9 @@ ocp4_workload_rhoso_deployment_phase_optional_services: false
 # Lab environment
 # ============================================================================
 ocp4_workload_rhoso_deployment_guid: "{{ guid }}"
-ocp4_workload_rhoso_deployment_bastion_ssh_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/{{ guid }}key.pem') }}"
-ocp4_workload_rhoso_deployment_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/{{ guid }}key.pub') }}"
+# Note: use tilde concatenation — '{{ guid }}' inside default() string is NOT evaluated
+ocp4_workload_rhoso_deployment_bastion_ssh_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/' ~ ocp4_workload_rhoso_deployment_guid ~ 'key.pem') }}"
+ocp4_workload_rhoso_deployment_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/' ~ ocp4_workload_rhoso_deployment_guid ~ 'key.pub') }}"
 
 # ============================================================================
 # Delegation hosts — inventory hostnames for delegate_to.

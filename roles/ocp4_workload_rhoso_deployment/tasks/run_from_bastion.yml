@@ -28,12 +28,34 @@
   become: true
   delegate_to: bastion
 
-- name: Copy VM SSH key to cloud-user .ssh for bastion playbook access
+- name: Copy VM SSH private key to cloud-user .ssh for bastion playbook access
   ansible.builtin.copy:
     src: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
     dest: "/home/cloud-user/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
     remote_src: true
     mode: "0600"
+    owner: cloud-user
+    group: cloud-user
+  become: true
+  delegate_to: bastion
+
+- name: Derive public key from private key if .pub file does not exist
+  ansible.builtin.shell:
+    cmd: >-
+      test -f ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub ||
+      ssh-keygen -y -f ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem
+      > ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub
+  become: true
+  become_user: cloud-user
+  delegate_to: bastion
+  changed_when: false
+
+- name: Copy VM SSH public key to cloud-user .ssh
+  ansible.builtin.copy:
+    src: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub"
+    dest: "/home/cloud-user/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub"
+    remote_src: true
+    mode: "0644"
     owner: cloud-user
     group: cloud-user
   become: true
