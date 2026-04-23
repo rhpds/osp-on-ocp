@@ -65,7 +65,7 @@
     content: |-
       {%- set ns = namespace(d={}) -%}
       {%- for k in _var_names -%}
-      {%-   set ns.d = ns.d | combine({k: lookup('vars', k)}) -%}
+      {%-   set ns.d = ns.d | combine({k: lookup('vars', k) | string}) -%}
       {%- endfor -%}
       {{ ns.d | to_nice_yaml }}
     dest: /tmp/rhoso-exec/vars.yml
