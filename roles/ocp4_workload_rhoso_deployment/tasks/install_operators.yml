@@ -3,6 +3,7 @@
   ansible.builtin.file:
     path: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}"
     state: absent
+  become: true
   delegate_to: bastion
 
 - name: Create working directory for OpenStack files

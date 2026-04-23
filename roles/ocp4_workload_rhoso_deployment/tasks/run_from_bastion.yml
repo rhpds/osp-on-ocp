@@ -65,9 +65,9 @@
     content: |-
       {%- set ns = namespace(d={}) -%}
       {%- for k in _var_names -%}
-      {%-   set ns.d = ns.d | combine({k: lookup('vars', k) | string}) -%}
+      {%-   set ns.d = ns.d | combine({k: lookup('vars', k)}) -%}
       {%- endfor -%}
-      {{ ns.d | to_nice_yaml }}
+      {{ ns.d | to_json | from_json | to_nice_yaml }}
     dest: /tmp/rhoso-exec/vars.yml
   no_log: true
   delegate_to: bastion
@@ -118,4 +118,5 @@
   ansible.builtin.file:
     path: /tmp/rhoso-exec
     state: absent
+  become: true
   delegate_to: bastion
