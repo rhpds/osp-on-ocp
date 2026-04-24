@@ -1,8 +1,10 @@
 ---
-- name: Install ansible-builder on bastion
+- name: Install ansible-builder and dependencies on bastion
   become: true
   ansible.builtin.dnf:
-    name: ansible-builder
+    name:
+    - ansible-builder
+    - python3.11-setuptools
     state: present
   delegate_to: bastion
 
