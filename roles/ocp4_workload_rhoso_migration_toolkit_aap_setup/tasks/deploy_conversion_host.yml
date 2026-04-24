@@ -35,7 +35,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}"
     pod: openstackclient
     remote_path: "/home/cloud-admin/bastion_{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}.pub"
-    local_path: "~/.ssh/bastion_{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}.pub"
+    local_path: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_public_key }}"
     state: to_pod
   delegate_to: bastion
 
