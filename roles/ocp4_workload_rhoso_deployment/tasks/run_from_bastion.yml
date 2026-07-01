@@ -105,9 +105,13 @@
         worker_2: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_2 }}"
         worker_3: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_3 }}"
       ocp4_workload_rhoso_deployment_rhc_activation_keys:
+      {% if ocp4_workload_rhoso_deployment_rhc_activation_key | default('') | length > 0 %}
+        - "{{ ocp4_workload_rhoso_deployment_rhc_activation_key }}"
+      {% else %}
       {% for key in ocp4_workload_rhoso_deployment_rhc_activation_keys %}
         - "{{ key }}"
       {% endfor %}
+      {% endif %}
     dest: /tmp/rhoso-exec/complex_vars.yml
   delegate_to: bastion
 

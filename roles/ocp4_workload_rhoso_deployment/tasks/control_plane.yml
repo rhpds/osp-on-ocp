@@ -30,7 +30,7 @@
   delay: 10
   delegate_to: bastion
 
-- name: Wait for OpenStack operator webhook endpoint to be ready
+- name: Wait for OpenStack operator webhook service to have endpoints
   kubernetes.core.k8s_info:
     api_version: v1
     kind: Endpoints
@@ -45,6 +45,7 @@
     _ocp4_workload_rhoso_deployment_webhook_ep.resources[0].subsets[0].addresses | length > 0
   retries: 60
   delay: 10
+  changed_when: false
   delegate_to: bastion
 
 - name: Create OpenStack Control Plane

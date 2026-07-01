@@ -174,8 +174,25 @@ ocp4_workload_rhoso_deployment_bastion_external_ip: "{{ rhoso_external_ip_bastio
 # ============================================================================
 ocp4_workload_rhoso_deployment_registry_username: "{{ registry_username | default('') }}"
 ocp4_workload_rhoso_deployment_registry_password: "{{ registry_password | default('') }}"
-ocp4_workload_rhoso_deployment_rhc_activation_keys: "{{ rhc_activation_keys | default([]) }}"
-ocp4_workload_rhoso_deployment_rhc_organization: "{{ rhc_organization | default('') }}"
+
+# Satellite registration (RHDP labs / demosat)
+ocp4_workload_rhoso_deployment_satellite_url: "{{ satellite_url | default('') }}"
+ocp4_workload_rhoso_deployment_satellite_org: "{{ satellite_org | default('') }}"
+# Skip Satellite TLS verification only when the Katello CA is not yet installed.
+ocp4_workload_rhoso_deployment_satellite_insecure: "{{ satellite_insecure | default(false) | bool }}"
+ocp4_workload_rhoso_deployment_rhc_activation_key: ""
+ocp4_workload_rhoso_deployment_rhc_activation_keys: >-
+  {{
+    [ocp4_workload_rhoso_deployment_rhc_activation_key]
+    if (ocp4_workload_rhoso_deployment_rhc_activation_key | default('') | length > 0)
+    else (rhc_activation_keys | default([]))
+  }}
+ocp4_workload_rhoso_deployment_rhc_organization: >-
+  {{
+    ocp4_workload_rhoso_deployment_satellite_org
+    if (ocp4_workload_rhoso_deployment_satellite_org | default('') | length > 0)
+    else (rhc_organization | default(''))
+  }}
 
 # Default password (base64 encoded 'openstack')
 ocp4_workload_rhoso_deployment_default_password_b64: "b3BlbnN0YWNr"

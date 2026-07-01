@@ -120,6 +120,38 @@
         ssh-publickey: "{{ _ocp4_workload_rhoso_deployment_nova_keys.results[1].content }}"
   delegate_to: bastion
 
+- name: Install Satellite CA certificate on compute node
+  when: ocp4_workload_rhoso_deployment_satellite_url | length > 0
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_compute_host }}"
+  become: true
+  block:
+  - name: Download Katello CA consumer package
+    ansible.builtin.get_url:
+      url: "https://{{ ocp4_workload_rhoso_deployment_satellite_url }}/pub/katello-ca-consumer-latest.noarch.rpm"
+      dest: /tmp/katello-ca-consumer-latest.noarch.rpm
+      mode: "0644"
+      validate_certs: false
+
+  - name: Install Katello CA consumer package
+    ansible.builtin.dnf:
+      name: /tmp/katello-ca-consumer-latest.noarch.rpm
+      state: present
+      disablerepo: "*"
+      disable_gpg_check: true
+
+- name: Configure Satellite registration vars in data plane node set manifest
+  when: ocp4_workload_rhoso_deployment_satellite_url | length > 0
+  ansible.builtin.replace:
+    path: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-dataplane-node-set-deploy.yaml"
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+  loop:
+  - regexp: SATELLITE_URL
+    replace: "{{ ocp4_workload_rhoso_deployment_satellite_url }}"
+  - regexp: SATELLITE_INSECURE
+    replace: "{{ ocp4_workload_rhoso_deployment_satellite_insecure | bool | lower }}"
+  delegate_to: bastion
+
 - name: Create subscription manager secret
   when:
   - ocp4_workload_rhoso_deployment_rhc_activation_keys | length > 0
