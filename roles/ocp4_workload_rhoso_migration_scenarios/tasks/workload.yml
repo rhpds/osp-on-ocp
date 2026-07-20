@@ -8,7 +8,7 @@
   when: ocp4_workload_rhoso_migration_scenarios_phase_job_templates | bool
 
 - name: Report deployment completion
-  agnosticd.core.agnosticd_user_info:
+  ansible.builtin.debug:
     msg:
     - ""
     - "Migration Scenarios Deployed"
