@@ -186,6 +186,17 @@
   changed_when: "'Installing' in _ocp4_workload_migration_vix_install.stdout or 'Installed' in _ocp4_workload_migration_vix_install.stdout"
   delegate_to: bastion
 
+- name: Download vmdk files
+  ansible.builtin.shell: |
+    ssh -o StrictHostKeyChecking=no -i {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key }} \
+      cloud-user@{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }} \
+      '{{ item }}'
+  loop:
+    - mkdir -p /local/disks
+    - curl -sk -u {{ fvmw_vcenter_user }}:{{ fvmw_vcenter_user_password }} "https://vcenter.apps.{{ sandbox_openshift_cluster }}.rhdp.net/folder/haproxy-user1/haproxy.vmdk?dcPath=RS00&dsName=workloadshare" -o /local/disks/haproxy.vmdk
+    - curl -sk -u {{ fvmw_vcenter_user }}:{{ fvmw_vcenter_user_password }} "https://vcenter.apps.{{ sandbox_openshift_cluster }}.rhdp.net/folder/haproxy-user1/haproxy-flat-flat.vmdk?dcPath=RS00&dsName=workloadshare" -o /local/disks/haproxy-flat-flat.vmdk
+  delegate_to: bastion
+
 - name: Save conversion host information
   ansible.builtin.copy:
     dest: "~/conversion-host-info.txt"
