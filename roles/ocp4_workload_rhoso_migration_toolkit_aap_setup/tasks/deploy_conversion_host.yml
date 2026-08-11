@@ -193,8 +193,8 @@
       'sudo {{ item }}'
   loop:
     - mkdir -p /local/disks
-    - curl -sk -u {{ fvmw_vcenter_user }}:{{ fvmw_vcenter_user_password }} "https://vcenter.apps.{{ sandbox_openshift_cluster }}.rhdp.net/folder/haproxy-user1/haproxy.vmdk?dcPath=RS00&dsName=workloadshare" -o /local/disks/haproxy.vmdk
-    - curl -sk -u {{ fvmw_vcenter_user }}:{{ fvmw_vcenter_user_password }} "https://vcenter.apps.{{ sandbox_openshift_cluster }}.rhdp.net/folder/haproxy-user1/haproxy-flat-flat.vmdk?dcPath=RS00&dsName=workloadshare" -o /local/disks/haproxy-flat-flat.vmdk
+    - curl -sk -u {{ vcenter_full_user }}:{{ vcenter_password }} "https://{{ vcenter_hostname }}/folder/haproxy-user1/haproxy.vmdk?dcPath=RS00&dsName=workloadshare" -o /local/disks/haproxy.vmdk
+    - curl -sk -u {{ vcenter_full_user }}:{{ vcenter_password }} "https://{{ vcenter_hostname }}/folder/haproxy-user1/haproxy-flat-flat.vmdk?dcPath=RS00&dsName=workloadshare" -o /local/disks/haproxy-flat-flat.vmdk
   delegate_to: bastion
 
 - name: Save conversion host information
