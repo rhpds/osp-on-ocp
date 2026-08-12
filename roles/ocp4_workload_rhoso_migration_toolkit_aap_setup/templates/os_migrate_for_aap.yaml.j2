@@ -23,7 +23,7 @@ copy_metadata_to_conv_host: true
 used_mapped_networks: false
 
 os_migrate_configure_network: true
-
+local_disk_path: /local/disks
 vms_list:
 {% for vm in ocp4_workload_rhoso_migration_toolkit_aap_setup_vms_to_migrate %}
   - {{ vm }}
