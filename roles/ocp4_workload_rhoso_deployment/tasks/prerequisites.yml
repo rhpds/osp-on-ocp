@@ -4,12 +4,12 @@
     api_version: v1
     kind: Node
   register: _ocp4_workload_rhoso_deployment_cluster_nodes
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display cluster nodes
   ansible.builtin.debug:
     msg: "Cluster has {{ _ocp4_workload_rhoso_deployment_cluster_nodes.resources | length }} nodes"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 # ---- NMState operator ----
 
@@ -27,7 +27,7 @@
       spec:
         finalizers:
         - kubernetes
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create NMState OperatorGroup
   kubernetes.core.k8s:
@@ -43,7 +43,7 @@
       spec:
         targetNamespaces:
         - openshift-nmstate
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for NMState OperatorGroup
   kubernetes.core.k8s_info:
@@ -54,7 +54,7 @@
   until: _ocp4_workload_rhoso_deployment_nmstate_og.resources | length > 0
   retries: 10
   delay: 5
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create NMState Subscription
   kubernetes.core.k8s:
@@ -73,7 +73,7 @@
         name: kubernetes-nmstate-operator
         source: redhat-operators
         sourceNamespace: openshift-marketplace
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for NMState operator CSV to succeed
   kubernetes.core.k8s_info:
@@ -88,7 +88,7 @@
     _ocp4_workload_rhoso_deployment_nmstate_csv.resources[0].status.phase == "Succeeded"
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for NMState CRD
   kubernetes.core.k8s_info:
@@ -99,7 +99,7 @@
   until: _ocp4_workload_rhoso_deployment_nmstate_crd.resources | length > 0
   retries: 30
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create NMState instance
   kubernetes.core.k8s:
@@ -111,7 +111,7 @@
         name: nmstate
   retries: 5
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Verify NMState instance
   kubernetes.core.k8s_info:
@@ -122,7 +122,7 @@
   until: _ocp4_workload_rhoso_deployment_nmstate_instance.resources | length > 0
   retries: 10
   delay: 5
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 # ---- MetalLB operator ----
 
@@ -132,7 +132,7 @@
     api_version: v1
     kind: Namespace
     state: present
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create MetalLB OperatorGroup
   kubernetes.core.k8s:
@@ -143,7 +143,7 @@
       metadata:
         name: metallb-operator
         namespace: metallb-system
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for MetalLB OperatorGroup
   kubernetes.core.k8s_info:
@@ -154,7 +154,7 @@
   until: _ocp4_workload_rhoso_deployment_metallb_og.resources | length > 0
   retries: 10
   delay: 5
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create MetalLB Subscription
   kubernetes.core.k8s:
@@ -170,7 +170,7 @@
         name: metallb-operator
         source: redhat-operators
         sourceNamespace: openshift-marketplace
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for MetalLB operator CSV to succeed
   kubernetes.core.k8s_info:
@@ -185,7 +185,7 @@
     _ocp4_workload_rhoso_deployment_metallb_csv.resources[0].status.phase == "Succeeded"
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for MetalLB CRD
   kubernetes.core.k8s_info:
@@ -196,7 +196,7 @@
   until: _ocp4_workload_rhoso_deployment_metallb_crd.resources | length > 0
   retries: 30
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for MetalLB webhook service endpoints
   kubernetes.core.k8s_info:
@@ -214,7 +214,7 @@
   retries: 30
   delay: 5
   changed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create MetalLB instance
   kubernetes.core.k8s:
@@ -230,7 +230,7 @@
           node-role.kubernetes.io/worker: ""
   retries: 5
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Verify MetalLB instance
   kubernetes.core.k8s_info:
@@ -242,7 +242,7 @@
   until: _ocp4_workload_rhoso_deployment_metallb_instance.resources | length > 0
   retries: 10
   delay: 5
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for MetalLB controller deployment
   kubernetes.core.k8s_info:
@@ -257,7 +257,7 @@
     _ocp4_workload_rhoso_deployment_metallb_ctrl.resources[0].status.readyReplicas >= 1
   retries: 30
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for MetalLB speaker daemonset
   kubernetes.core.k8s_info:
@@ -272,7 +272,7 @@
     _ocp4_workload_rhoso_deployment_metallb_speaker.resources[0].status.numberReady > 0
   retries: 30
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 # ---- cert-manager verification ----
 
@@ -285,7 +285,7 @@
   until: _ocp4_workload_rhoso_deployment_certmgr_pods.resources | length > 0
   retries: 30
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display cert-manager status
   ansible.builtin.debug:
@@ -294,4 +294,4 @@
       {{ _ocp4_workload_rhoso_deployment_certmgr_pods.resources
          | json_query('[?status.phase==`Running`]') | length }} running
       out of {{ _ocp4_workload_rhoso_deployment_certmgr_pods.resources | length }} total
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

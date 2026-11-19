@@ -4,12 +4,12 @@
     path: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}"
     state: directory
     mode: '0755'
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Switch to OpenStack project
   ansible.builtin.shell: oc project {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_openstack_namespace }}
   changed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Get OpenStack security group ID (basic)
   ansible.builtin.shell: |
@@ -17,7 +17,7 @@
   register: _ocp4_workload_migration_sg_basic
   changed_when: false
   failed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Get OpenStack default security group ID (fallback)
   ansible.builtin.shell: |
@@ -26,7 +26,7 @@
   changed_when: false
   failed_when: false
   when: _ocp4_workload_migration_sg_basic.stdout | trim == ""
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Set security group ID
   ansible.builtin.set_fact:
@@ -48,21 +48,21 @@
     oc exec -t openstackclient -- openstack project list | grep ' admin ' | awk '{print $2}'
   register: _ocp4_workload_migration_project_id
   changed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Get OpenStack auth URL
   ansible.builtin.shell: |
     oc exec -t openstackclient -- openstack endpoint list --service identity --interface public -c URL -f value
   register: _ocp4_workload_migration_auth_url
   changed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create os_migrate configuration file for AAP
   ansible.builtin.template:
     src: os_migrate_for_aap.yaml.j2
     dest: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_config_dir }}/os_migrate_for_aap.yaml"
     mode: '0644'
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Display migration configuration file location
   ansible.builtin.debug:

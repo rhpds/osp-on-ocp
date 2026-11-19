@@ -1,0 +1,34 @@
+---
+# The nested playbook in run_from_bastion.yml needs ansible plus the k8s
+# python libraries on the bastion.
+#
+# AgnosticD V1 provided this: ansible/configs/ocp4-cluster/pre_software.yml
+# runs the host_virtualenv role with host_virtualenv_path=/opt/virtualenvs/k8s.
+# AgnosticD V2 has no host_virtualenv role, so the venv has to be created
+# here when it is missing. On V1 the stat below finds it and nothing runs.
+
+- name: Check for ansible in the bastion virtualenv
+  ansible.builtin.stat:
+    path: "{{ ocp4_workload_rhoso_deployment_bastion_venv }}/bin/ansible-playbook"
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
+  register: _ocp4_workload_rhoso_deployment_venv_stat
+
+- name: Create the bastion virtualenv
+  when: not _ocp4_workload_rhoso_deployment_venv_stat.stat.exists
+  become: true
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
+  block:
+  - name: Install virtualenv build prerequisites
+    ansible.builtin.package:
+      name: "{{ ocp4_workload_rhoso_deployment_bastion_venv_prereqs }}"
+      state: present
+
+  - name: Install python packages into the bastion virtualenv
+    ansible.builtin.pip:
+      name: "{{ ocp4_workload_rhoso_deployment_bastion_venv_packages }}"
+      virtualenv: "{{ ocp4_workload_rhoso_deployment_bastion_venv }}"
+      virtualenv_command: "{{ ocp4_workload_rhoso_deployment_bastion_venv_python }} -m venv"
+    register: _ocp4_workload_rhoso_deployment_venv_pip
+    until: _ocp4_workload_rhoso_deployment_venv_pip is success
+    retries: 3
+    delay: 20

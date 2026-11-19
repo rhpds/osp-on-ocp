@@ -7,7 +7,7 @@
     kind: Namespace
     name: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_aap_ns
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Check for existing AnsibleAutomationPlatform CR
   kubernetes.core.k8s_info:
@@ -16,7 +16,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_aap_cr
   when: _ocp4_workload_migration_aap_ns.resources | length > 0
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Check if AAP pods are running
   kubernetes.core.k8s_info:
@@ -30,7 +30,7 @@
   - _ocp4_workload_migration_aap_ns.resources | length > 0
   - _ocp4_workload_migration_aap_cr.resources is defined
   - _ocp4_workload_migration_aap_cr.resources | length > 0
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Set AAP installation status
   ansible.builtin.set_fact:
@@ -68,7 +68,7 @@
       provisioner: kubernetes.io/no-provisioner
       reclaimPolicy: Delete
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create NFS PersistentVolume for AAP
   kubernetes.core.k8s:
@@ -91,7 +91,7 @@
         storageClassName: nfs
         volumeMode: Filesystem
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create AAP namespace
   kubernetes.core.k8s:
@@ -100,7 +100,7 @@
     kind: Namespace
     state: present
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create AAP OperatorGroup
   kubernetes.core.k8s:
@@ -115,7 +115,7 @@
         targetNamespaces:
         - "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Wait for OperatorGroup to be created
   kubernetes.core.k8s_info:
@@ -128,7 +128,7 @@
   retries: 10
   delay: 5
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Subscribe to ansible-automation-platform-operator
   kubernetes.core.k8s:
@@ -146,7 +146,7 @@
         source: redhat-operators
         sourceNamespace: openshift-marketplace
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Wait for AAP operator CSV to succeed
   kubernetes.core.k8s_info:
@@ -161,7 +161,7 @@
   retries: 60
   delay: 10
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create AnsibleAutomationPlatform CR
   kubernetes.core.k8s:
@@ -186,7 +186,7 @@
         lightspeed:
           disabled: true
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Wait for AAP pods to be running
   kubernetes.core.k8s_info:
@@ -202,7 +202,7 @@
   retries: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_pod_wait_retries }}"
   delay: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_pod_wait_delay }}"
   when: not _ocp4_workload_migration_aap_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 # --- Retrieve AAP access information ---
 
@@ -220,7 +220,7 @@
     name: "{{ _ocp4_workload_migration_aap_effective_name }}-admin-password"
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_aap_admin_secret
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Decode AAP admin password
   ansible.builtin.set_fact:
@@ -233,7 +233,7 @@
     kind: Route
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_aap_routes
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Extract AAP dashboard URL
   ansible.builtin.set_fact:
@@ -259,7 +259,7 @@
     kind: AutomationHub
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_hub_cr
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Check if Hub pods are running
   kubernetes.core.k8s_info:
@@ -270,7 +270,7 @@
     - "app.kubernetes.io/managed-by=automationhub-operator"
   register: _ocp4_workload_migration_hub_pods
   when: _ocp4_workload_migration_hub_cr.resources | length > 0
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Set Hub installation status
   ansible.builtin.set_fact:
@@ -298,7 +298,7 @@
         file_storage_size: 10Gi
         storage_type: file
   when: not _ocp4_workload_migration_hub_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Wait for Hub pods to be running
   kubernetes.core.k8s_info:
@@ -314,7 +314,7 @@
   retries: 60
   delay: 10
   when: not _ocp4_workload_migration_hub_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Wait for AutomationHub to be fully ready
   kubernetes.core.k8s_info:
@@ -330,7 +330,7 @@
   retries: 30
   delay: 10
   when: not _ocp4_workload_migration_hub_installed | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Set effective Hub instance name
   ansible.builtin.set_fact:
@@ -346,7 +346,7 @@
     name: "{{ _ocp4_workload_migration_hub_effective_name }}"
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_hub_route
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Display Hub access information
   ansible.builtin.debug:

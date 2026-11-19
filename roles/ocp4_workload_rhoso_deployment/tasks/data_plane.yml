@@ -3,7 +3,7 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-dataplane-netconfig.yaml"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Set hostname for compute node
   ansible.builtin.hostname:
@@ -70,7 +70,7 @@
   loop:
   - "{{ ocp4_workload_rhoso_deployment_bastion_ssh_public_key }}"
   - "{{ ocp4_workload_rhoso_deployment_bastion_ssh_private_key }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create dataplane ansible SSH key secret
   kubernetes.core.k8s:
@@ -86,7 +86,7 @@
         authorized_keys: "{{ _ocp4_workload_rhoso_deployment_ssh_keys.results[0].content }}"
         ssh-privatekey: "{{ _ocp4_workload_rhoso_deployment_ssh_keys.results[1].content }}"
         ssh-publickey: "{{ _ocp4_workload_rhoso_deployment_ssh_keys.results[0].content }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Generate nova migration SSH key pair
   community.crypto.openssh_keypair:
@@ -94,7 +94,7 @@
     type: ecdsa
     size: 521
     force: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Read nova migration SSH key files
   ansible.builtin.slurp:
@@ -103,7 +103,7 @@
   loop:
   - "{{ ocp4_workload_rhoso_deployment_bastion_home }}/nova-migration-key"
   - "{{ ocp4_workload_rhoso_deployment_bastion_home }}/nova-migration-key.pub"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create nova migration SSH key secret
   kubernetes.core.k8s:
@@ -118,7 +118,7 @@
       data:
         ssh-privatekey: "{{ _ocp4_workload_rhoso_deployment_nova_keys.results[0].content }}"
         ssh-publickey: "{{ _ocp4_workload_rhoso_deployment_nova_keys.results[1].content }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Install Satellite CA certificate on compute node
   when: ocp4_workload_rhoso_deployment_satellite_url | length > 0
@@ -150,13 +150,13 @@
     replace: "{{ ocp4_workload_rhoso_deployment_satellite_url }}"
   - regexp: SATELLITE_INSECURE
     replace: "{{ ocp4_workload_rhoso_deployment_satellite_insecure | bool | lower }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create subscription manager secret
   when:
   - ocp4_workload_rhoso_deployment_rhc_activation_keys | length > 0
   - ocp4_workload_rhoso_deployment_rhc_organization | length > 0
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
   block:
   - name: Build subscription manager rhc_auth JSON
     ansible.builtin.set_fact:
@@ -192,7 +192,7 @@
          if (ocp4_workload_rhoso_deployment_registry_username | length > 0 and
              ocp4_workload_rhoso_deployment_registry_password | length > 0)
          else '{}' }}
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply Red Hat registry secret
   kubernetes.core.k8s:
@@ -206,7 +206,7 @@
       type: Opaque
       data:
         edpm_container_registry_logins: "{{ _ocp4_workload_rhoso_deployment_registry_logins | b64encode }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack DataPlane CRDs
   kubernetes.core.k8s_info:
@@ -220,7 +220,7 @@
   loop:
   - openstackdataplanenodesets.dataplane.openstack.org
   - openstackdataplanedeployments.dataplane.openstack.org
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply data plane node set
   kubernetes.core.k8s:
@@ -228,7 +228,7 @@
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-dataplane-node-set-deploy.yaml"
   retries: 5
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply data plane deployment
   kubernetes.core.k8s:
@@ -236,7 +236,7 @@
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-dataplane-deployment.yaml"
   retries: 5
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for Data Plane Deployment to be ready
   kubernetes.core.k8s_info:
@@ -264,7 +264,7 @@
     )
   retries: 720
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display Data Plane Deployment status
   ansible.builtin.debug:
@@ -274,7 +274,7 @@
       Conditions: {{ _ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('conditions', []) | map(attribute='type') | list }}
       Setup Complete: {{ _ocp4_workload_rhoso_deployment_dp_status.resources[0].status.get('message', '') == 'Setup complete' }}
   when: _ocp4_workload_rhoso_deployment_dp_status.resources | length > 0
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Discover compute hosts in Nova cell
   kubernetes.core.k8s_exec:
@@ -283,7 +283,7 @@
     command: nova-manage cell_v2 discover_hosts --verbose
   register: _ocp4_workload_rhoso_deployment_discover_hosts
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display host discovery results
   ansible.builtin.debug:
@@ -291,4 +291,4 @@
   when:
   - _ocp4_workload_rhoso_deployment_discover_hosts is defined
   - _ocp4_workload_rhoso_deployment_discover_hosts.stdout_lines is defined
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

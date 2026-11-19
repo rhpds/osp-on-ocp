@@ -62,7 +62,7 @@
 - name: Display NFS exports
   ansible.builtin.debug:
     var: _ocp4_workload_rhoso_deployment_nfs_exports.stdout_lines
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create NFS StorageClass and PersistentVolume
   kubernetes.core.k8s:
@@ -90,7 +90,7 @@
         persistentVolumeReclaimPolicy: Delete
         storageClassName: nfs
         volumeMode: Filesystem
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Verify NFS StorageClass and PersistentVolume
   kubernetes.core.k8s_info:
@@ -105,7 +105,7 @@
   - api_version: v1
     kind: PersistentVolume
     name: nfs-pv1
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display NFS resource status
   ansible.builtin.debug:
@@ -113,4 +113,4 @@
       {{ item.item.kind }} '{{ item.item.name }}' —
       {{ 'Found' if item.resources | length > 0 else 'Not Found' }}
   loop: "{{ _ocp4_workload_rhoso_deployment_nfs_resources.results }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

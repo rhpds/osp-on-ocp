@@ -7,7 +7,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Delete AutomationHub CR
   kubernetes.core.k8s:
@@ -17,7 +17,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Delete AAP Subscription
   kubernetes.core.k8s:
@@ -27,7 +27,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Delete AAP OperatorGroup
   kubernetes.core.k8s:
@@ -37,7 +37,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Delete AAP namespace
   kubernetes.core.k8s:
@@ -46,7 +46,7 @@
     kind: Namespace
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Delete NFS PersistentVolume and StorageClass
   kubernetes.core.k8s:
@@ -62,7 +62,7 @@
     kind: StorageClass
     name: nfs
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Delete conversion host via openstackclient pod
   kubernetes.core.k8s_exec:
@@ -84,7 +84,7 @@
       openstack security group delete basic 2>/dev/null || true;
       "
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Clean up working directories on bastion
   ansible.builtin.file:
@@ -96,7 +96,7 @@
   - "~/conversion-host-info.txt"
   - "~/setup-conversion-host.sh"
   - "~/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Report removal completion
   ansible.builtin.debug:

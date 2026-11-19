@@ -12,7 +12,7 @@
         heat:
           enabled: true
     merge_type: merge
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Enable Swift (Object Storage Service)
   kubernetes.core.k8s:
@@ -27,7 +27,7 @@
         swift:
           enabled: true
     merge_type: merge
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for Heat services to be ready
   kubernetes.core.k8s_info:
@@ -43,7 +43,7 @@
       | selectattr('status.phase', 'equalto', 'Running') | list | length > 0
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for Swift services to be ready
   kubernetes.core.k8s_info:
@@ -59,7 +59,7 @@
       | selectattr('status.phase', 'equalto', 'Running') | list | length > 0
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Get OpenStack client pod for verification
   kubernetes.core.k8s_info:
@@ -69,7 +69,7 @@
     label_selectors:
     - "service=openstackclient"
   register: _ocp4_workload_rhoso_deployment_osclient
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Verify Heat orchestration service
   kubernetes.core.k8s_exec:
@@ -78,7 +78,7 @@
     command: openstack orchestration service list
   register: _ocp4_workload_rhoso_deployment_heat_svc
   when: _ocp4_workload_rhoso_deployment_osclient.resources | length > 0
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Verify Swift object storage service
   kubernetes.core.k8s_exec:
@@ -88,7 +88,7 @@
   register: _ocp4_workload_rhoso_deployment_swift_svc
   when: _ocp4_workload_rhoso_deployment_osclient.resources | length > 0
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Optional services summary
   ansible.builtin.debug:
@@ -98,4 +98,4 @@
     - "Swift pods running: {{ _ocp4_workload_rhoso_deployment_swift_pods.resources | selectattr('status.phase', 'equalto', 'Running') | list | length }}"
     - "Heat orchestration: {{ 'Available' if _ocp4_workload_rhoso_deployment_heat_svc is defined and _ocp4_workload_rhoso_deployment_heat_svc.rc == 0 else 'Not Available' }}"
     - "Swift object storage: {{ 'Available' if _ocp4_workload_rhoso_deployment_swift_svc is defined and _ocp4_workload_rhoso_deployment_swift_svc.rc == 0 else 'Not Available' }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

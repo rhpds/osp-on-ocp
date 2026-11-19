@@ -6,14 +6,14 @@
     - ansible-builder
     - python3.11-setuptools
     state: present
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create working directory for ansible-builder
   ansible.builtin.file:
     path: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
     state: directory
     mode: '0755'
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create execution-environment.yml
   ansible.builtin.copy:
@@ -45,7 +45,7 @@
         prepend_base:
           - "RUN mkdir -p /etc/sudoers.d"
           - "RUN echo 'cloud-user ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/cloud-user"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create requirements.txt for Python dependencies
   ansible.builtin.copy:
@@ -55,7 +55,7 @@
       requests
       pyVim
       pyVmomi
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create requirements.yml for Ansible collections
   ansible.builtin.copy:
@@ -69,7 +69,7 @@
           version: 4.9.0
         - name: os_migrate.vmware_migration_kit
           version: ">2.1.0"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create bindep.txt for system dependencies
   ansible.builtin.copy:
@@ -78,7 +78,7 @@
     content: |
       openssh-clients
       python3.12
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create ansible.cfg for automation hub access
   ansible.builtin.copy:
@@ -93,7 +93,7 @@
       auth_url=https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token
       token={{ ocp4_workload_rhoso_migration_toolkit_aap_setup_automation_hub_token }}
   when: ocp4_workload_rhoso_migration_toolkit_aap_setup_automation_hub_token | length > 0
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 # --- Build the execution environment ---
 
@@ -103,7 +103,7 @@
   register: _ocp4_workload_migration_podman_auth
   failed_when: false
   changed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Authenticate to registry.redhat.io
   ansible.builtin.command:
@@ -113,7 +113,7 @@
       -p "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_registry_password }}"
   when: _ocp4_workload_migration_podman_auth.rc != 0
   no_log: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Build execution environment with ansible-builder
   ansible.builtin.command:
@@ -123,7 +123,7 @@
     chdir: "~/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_builder_work_dir }}"
   register: _ocp4_workload_migration_builder_output
   changed_when: "'Successfully tagged' in _ocp4_workload_migration_builder_output.stdout"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Display build output
   ansible.builtin.debug:
@@ -138,7 +138,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_hub_route_push
   when: ocp4_workload_rhoso_migration_toolkit_aap_setup_push_to_aap_registry | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Extract AAP Hub registry URL
   ansible.builtin.set_fact:
@@ -158,7 +158,7 @@
       localhost/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_name }}:{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_tag }}
       {{ _ocp4_workload_migration_hub_registry_url }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_name }}:{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_tag }}
   when: ocp4_workload_rhoso_migration_toolkit_aap_setup_push_to_aap_registry | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Get Hub admin password for registry authentication
   kubernetes.core.k8s_info:
@@ -168,7 +168,7 @@
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_hub_admin_secret
   when: ocp4_workload_rhoso_migration_toolkit_aap_setup_push_to_aap_registry | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Set registry password from Hub admin secret
   ansible.builtin.set_fact:
@@ -198,7 +198,7 @@
   - ocp4_workload_rhoso_migration_toolkit_aap_setup_push_to_aap_registry | bool
   - _ocp4_workload_migration_hub_registry_password is defined
   changed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Push execution environment to AAP internal registry
   ansible.builtin.command:
@@ -206,7 +206,7 @@
       podman push
       {{ _ocp4_workload_migration_hub_registry_url }}/{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_name }}:{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ee_image_tag }}
   when: ocp4_workload_rhoso_migration_toolkit_aap_setup_push_to_aap_registry | bool
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Display execution environment build summary
   ansible.builtin.debug:

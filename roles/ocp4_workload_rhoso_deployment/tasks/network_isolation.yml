@@ -3,19 +3,19 @@
   kubernetes.core.k8s:
     state: present
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-nncp-w1.yaml"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply NodeNetworkConfigurationPolicy for worker node 2
   kubernetes.core.k8s:
     state: present
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-nncp-w2.yaml"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply NodeNetworkConfigurationPolicy for worker node 3
   kubernetes.core.k8s:
     state: present
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-nncp-w3.yaml"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for all NNCPs to be created
   kubernetes.core.k8s_info:
@@ -25,7 +25,7 @@
   until: _ocp4_workload_rhoso_deployment_nncp_status.resources | length >= 3
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Check individual NNCP status
   kubernetes.core.k8s_info:
@@ -41,7 +41,7 @@
   retries: 30
   delay: 10
   loop: "{{ ocp4_workload_rhoso_deployment_nncp_names }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display NNCP status
   ansible.builtin.debug:
@@ -50,13 +50,13 @@
   when:
   - item.status is defined
   - item.metadata is defined
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply NetworkAttachmentDefinitions for isolated networks
   kubernetes.core.k8s:
     state: present
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-netattach.yaml"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for MetalLB additional CRDs
   kubernetes.core.k8s_info:
@@ -70,7 +70,7 @@
   loop:
   - ipaddresspools.metallb.io
   - l2advertisements.metallb.io
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply MetalLB IP address pools
   kubernetes.core.k8s:
@@ -78,7 +78,7 @@
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-metal-lb-ip-address-pools.yaml"
   retries: 5
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply MetalLB L2 advertisements
   kubernetes.core.k8s:
@@ -86,7 +86,7 @@
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-metal-lb-l2-advertisements.yaml"
   retries: 5
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Enable global IP forwarding for OVN
   kubernetes.core.k8s:
@@ -102,7 +102,7 @@
             gatewayConfig:
               ipForwarding: "Global"
     merge_type: merge
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Verify NetworkAttachmentDefinitions
   kubernetes.core.k8s_info:
@@ -110,10 +110,10 @@
     kind: NetworkAttachmentDefinition
     namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
   register: _ocp4_workload_rhoso_deployment_net_attach_defs
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display created NetworkAttachmentDefinitions
   ansible.builtin.debug:
     msg: "Created NetworkAttachmentDefinition: {{ item.metadata.name }}"
   loop: "{{ _ocp4_workload_rhoso_deployment_net_attach_defs.resources }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

@@ -20,4 +20,4 @@
     - ""
     - "Next: Open AAP -> Resources -> Templates -> launch your scenario job template."
     - ""
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_scenarios_bastion_host }}"

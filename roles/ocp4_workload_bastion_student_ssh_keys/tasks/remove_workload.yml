@@ -1,6 +1,6 @@
 ---
 - name: Read bastion SSH public key
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_bastion_student_ssh_keys_bastion_host }}"
   become: true
   ansible.builtin.slurp:
     src: "{{ ocp4_workload_bastion_student_ssh_keys_public_key }}"
@@ -20,7 +20,7 @@
     ansible_ssh_extra_args: "{{ _isolated_ssh_extra_args }}"
 
 - name: Remove SSH keys from student user .ssh directory
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_bastion_student_ssh_keys_bastion_host }}"
   become: true
   ansible.builtin.file:
     path: "~{{ ocp4_workload_bastion_student_ssh_keys_user }}/.ssh/{{ item }}"

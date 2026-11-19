@@ -3,9 +3,22 @@
 ocp4_workload_bastion_student_ssh_keys_user: "{{ bastion_student_user_name | default('lab-user') }}"
 ocp4_workload_bastion_student_ssh_keys_group: users
 
-# Bastion SSH key paths (must match the bastion role defaults)
-ocp4_workload_bastion_student_ssh_keys_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/{{ guid }}key.pem) }}"
-ocp4_workload_bastion_student_ssh_keys_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/{{ guid }}key.pub') }}"
+# Inventory host for bastion-side tasks.
+# V1 runs the workloads play on the bastion (inventory host named 'bastion');
+# V2 (agnosticd-v2) runs workloads on localhost, so resolve via the group.
+ocp4_workload_bastion_student_ssh_keys_bastion_host: >-
+  {{ groups['bastions'][0] | default('bastion') }}
+
+# Bastion SSH key paths (must match the bastion role defaults).
+# V2: host fact bastion_ssh_key_path, set by the agnosticd-v2 'bastion' role.
+# V1: ~/.ssh/<guid>key.pem.
+# Note: use tilde concatenation — '{{ guid }}' inside a default() string is NOT evaluated
+ocp4_workload_bastion_student_ssh_keys_private_key: >-
+  {{ (hostvars[ocp4_workload_bastion_student_ssh_keys_bastion_host] | default({})).get('bastion_ssh_key_path')
+     | default(bastion_ssh_key_path | default('~/.ssh/' ~ guid ~ 'key.pem'), true) }}
+ocp4_workload_bastion_student_ssh_keys_public_key: >-
+  {{ (hostvars[ocp4_workload_bastion_student_ssh_keys_bastion_host] | default({})).get('bastion_ssh_pubkey_path')
+     | default(bastion_ssh_pubkey_path | default('~/.ssh/' ~ guid ~ 'key.pub'), true) }}
 ocp4_workload_bastion_student_ssh_keys_ssh_config: ~/.ssh/config
 
 # Remote user on isolated instances (user to SSH as)

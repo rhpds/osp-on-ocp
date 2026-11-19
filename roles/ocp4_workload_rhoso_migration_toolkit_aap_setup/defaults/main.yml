@@ -12,8 +12,24 @@ ocp4_workload_rhoso_migration_toolkit_aap_setup_phase_configure_aap_api: true
 # Lab environment
 # ============================================================================
 ocp4_workload_rhoso_migration_toolkit_aap_setup_guid: "{{ guid }}"
-ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/' ~ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid ~ 'key.pem') }}"
-ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/' ~ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid ~ 'key.pub') }}"
+
+# Inventory host for bastion-side tasks.
+# V1 runs the workloads play on the bastion (inventory host named 'bastion');
+# V2 (agnosticd-v2) runs workloads on localhost, so resolve via the group.
+ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host: >-
+  {{ groups['bastions'][0] | default('bastion') }}
+
+# Bastion SSH key pair.
+# V2: host fact bastion_ssh_key_path, set by the agnosticd-v2 'bastion' role.
+# V1: ~/.ssh/<guid>key.pem.
+ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key: >-
+  {{ (hostvars[ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host] | default({})).get('bastion_ssh_key_path')
+     | default(bastion_ssh_key_path
+               | default('~/.ssh/' ~ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid ~ 'key.pem'), true) }}
+ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_public_key: >-
+  {{ (hostvars[ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host] | default({})).get('bastion_ssh_pubkey_path')
+     | default(bastion_ssh_pubkey_path
+               | default('~/.ssh/' ~ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid ~ 'key.pub'), true) }}
 
 # ============================================================================
 # AAP configuration

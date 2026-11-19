@@ -4,14 +4,14 @@
     path: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}"
     state: absent
   become: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create working directory for OpenStack files
   ansible.builtin.file:
     path: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}"
     state: directory
     mode: "0755"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Copy OpenStack configuration files to working directory
   ansible.builtin.copy:
@@ -19,7 +19,7 @@
     dest: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/{{ item }}"
     mode: "0644"
   loop: "{{ ocp4_workload_rhoso_deployment_content_files }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create openstack-operators namespace
   kubernetes.core.k8s:
@@ -27,7 +27,7 @@
     api_version: v1
     kind: Namespace
     state: present
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create openstack namespace
   kubernetes.core.k8s:
@@ -35,7 +35,7 @@
     api_version: v1
     kind: Namespace
     state: present
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Replace UUID placeholder with guid in manifest files
   ansible.builtin.replace:
@@ -43,7 +43,7 @@
     regexp: "UUID"
     replace: "{{ ocp4_workload_rhoso_deployment_guid }}"
   loop: "{{ ocp4_workload_rhoso_deployment_uuid_replacement_files }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Replace external IP placeholders for worker nodes
   ansible.builtin.replace:
@@ -60,13 +60,13 @@
   - file: "osp-ng-nncp-w3.yaml"
     placeholder: "EXTERNAL_IP_WORKER_3"
     value: "{{ ocp4_workload_rhoso_deployment_worker_external_ips.worker_3 }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Apply OpenStack operator OperatorGroup and Subscription
   kubernetes.core.k8s:
     state: present
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-openstack-operator.yaml"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack operator install plan
   kubernetes.core.k8s_info:
@@ -77,7 +77,7 @@
   until: _ocp4_workload_rhoso_deployment_install_plans.resources | length > 0
   retries: 30
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Approve the OpenStack operator install plan
   kubernetes.core.k8s:
@@ -90,7 +90,7 @@
         namespace: "{{ ocp4_workload_rhoso_deployment_openstack_operators_namespace }}"
       spec:
         approved: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack CRD
   kubernetes.core.k8s_info:
@@ -101,7 +101,7 @@
   until: _ocp4_workload_rhoso_deployment_osp_crd.resources | length > 0
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack operator CSV to succeed
   kubernetes.core.k8s_info:
@@ -118,13 +118,13 @@
     _ocp4_workload_rhoso_deployment_osp_csv.resources[0].status.phase == 'Succeeded'
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Initialize the OpenStack operator
   kubernetes.core.k8s:
     state: present
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-openstack-operator-init.yaml"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack operator to be ready
   kubernetes.core.k8s_info:
@@ -137,7 +137,7 @@
     _ocp4_workload_rhoso_deployment_osp_operator.resources[0].status.components is defined
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Verify OpenStack operator pods are running
   kubernetes.core.k8s_info:
@@ -153,7 +153,7 @@
       | json_query('[?status.phase==`Running`]') | length > 0
   retries: 60
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack operator webhook service to have endpoints
   kubernetes.core.k8s_info:
@@ -171,7 +171,7 @@
   retries: 60
   delay: 10
   changed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display OpenStack operator pod count
   ansible.builtin.debug:
@@ -180,4 +180,4 @@
       {{ _ocp4_workload_rhoso_deployment_operator_pods.resources
          | json_query('[?status.phase==`Running`]') | length }}
       out of {{ _ocp4_workload_rhoso_deployment_operator_pods.resources | length }} total
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

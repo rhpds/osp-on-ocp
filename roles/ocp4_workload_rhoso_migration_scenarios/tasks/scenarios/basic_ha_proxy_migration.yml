@@ -17,7 +17,7 @@
     controller_oauthtoken: "{{ _ocp4_workload_migration_scenarios_api_token }}"
     validate_certs: false
   register: _ocp4_workload_migration_scenarios_haproxy_result
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_scenarios_bastion_host }}"
 
 - name: Display HAproxy migration scenario result
   ansible.builtin.debug:
@@ -28,4 +28,4 @@
       Click "Launch" to start the VM migration.
       Migration target: {{ ocp4_workload_rhoso_migration_scenarios_vms_to_migrate | first | default('(see extra_vars)') }}
   when: not (_ocp4_workload_migration_scenarios_haproxy_result.failed | default(false))
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_scenarios_bastion_host }}"

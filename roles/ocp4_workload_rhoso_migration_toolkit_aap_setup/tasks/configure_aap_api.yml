@@ -8,7 +8,7 @@
     name: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_instance_name }}-admin-password"
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_api_admin_secret
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Decode AAP admin password
   ansible.builtin.set_fact:
@@ -21,7 +21,7 @@
     kind: Route
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_api_routes
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Extract AAP Controller URL
   ansible.builtin.set_fact:
@@ -43,7 +43,7 @@
   until: _ocp4_workload_migration_api_ping.status == 200
   retries: 30
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create OAuth2 token via awx-manage
   ansible.builtin.shell: |
@@ -52,7 +52,7 @@
       awx-manage create_oauth2_token --user admin
   register: _ocp4_workload_migration_api_token_result
   changed_when: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Set API token
   ansible.builtin.set_fact:
@@ -64,7 +64,7 @@
   ansible.builtin.slurp:
     src: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key }}"
   register: _ocp4_workload_migration_api_ssh_key
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create Bastion SSH Credential
   awx.awx.credential:
@@ -79,7 +79,7 @@
     controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
     controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
     validate_certs: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Get AAP Hub route for registry
   kubernetes.core.k8s_info:
@@ -87,7 +87,7 @@
     kind: Route
     namespace: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_aap_namespace }}"
   register: _ocp4_workload_migration_api_hub_route
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Extract AAP Hub registry URL
   ansible.builtin.set_fact:
@@ -108,7 +108,7 @@
     controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
     controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
     validate_certs: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create conversion_host in inventory
   awx.awx.host:
@@ -122,7 +122,7 @@
     controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
     controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
     validate_certs: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create migrator host in inventory
   awx.awx.host:
@@ -136,7 +136,7 @@
     controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
     controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
     validate_certs: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create VMware Migration Toolkit Execution Environment
   awx.awx.execution_environment:
@@ -148,7 +148,7 @@
     controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
     controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
     validate_certs: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Create VMware migration toolkit project
   awx.awx.project:
@@ -166,7 +166,7 @@
     validate_certs: false
     wait: false
   register: _ocp4_workload_migration_api_project
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Trigger project sync from Git
   awx.awx.project_update:
@@ -175,7 +175,7 @@
     controller_host: "{{ _ocp4_workload_migration_api_controller_url }}"
     controller_oauthtoken: "{{ _ocp4_workload_migration_api_token }}"
     validate_certs: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Wait for project to complete sync
   ansible.builtin.uri:
@@ -193,7 +193,7 @@
   retries: 24
   delay: 5
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Display AAP configuration summary
   ansible.builtin.debug:

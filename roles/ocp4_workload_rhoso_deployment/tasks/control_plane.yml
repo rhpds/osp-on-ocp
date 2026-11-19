@@ -3,7 +3,7 @@
   ansible.builtin.slurp:
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/nfs-cinder-conf"
   register: _ocp4_workload_rhoso_deployment_nfs_cinder_conf
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create Cinder NFS configuration secret
   kubernetes.core.k8s:
@@ -17,7 +17,7 @@
       type: Opaque
       data:
         nfs-cinder-conf: "{{ _ocp4_workload_rhoso_deployment_nfs_cinder_conf.content }}"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack Control Plane CRD
   kubernetes.core.k8s_info:
@@ -28,7 +28,7 @@
   until: _ocp4_workload_rhoso_deployment_cp_crd.resources | length > 0
   retries: 30
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack operator webhook service to have endpoints
   kubernetes.core.k8s_info:
@@ -46,7 +46,7 @@
   retries: 60
   delay: 10
   changed_when: false
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Create OpenStack Control Plane
   kubernetes.core.k8s:
@@ -54,7 +54,7 @@
     src: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}/osp-ng-ctlplane-deploy.yaml"
   retries: 10
   delay: 15
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Wait for OpenStack Control Plane to be ready
   kubernetes.core.k8s_info:
@@ -71,7 +71,7 @@
       | json_query('[?type==`Ready` && status==`True`]') | length > 0
   retries: 360
   delay: 10
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Determine Control Plane readiness
   ansible.builtin.set_fact:
@@ -82,11 +82,11 @@
   - _ocp4_workload_rhoso_deployment_cp_status.resources | length > 0
   - _ocp4_workload_rhoso_deployment_cp_status.resources[0].status is defined
   - _ocp4_workload_rhoso_deployment_cp_status.resources[0].status.conditions is defined
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Display Control Plane status
   ansible.builtin.debug:
     msg: >-
       OpenStack Control Plane Ready: {{ _ocp4_workload_rhoso_deployment_cp_ready | default('Unknown') }}
   when: _ocp4_workload_rhoso_deployment_cp_status.resources | length > 0
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

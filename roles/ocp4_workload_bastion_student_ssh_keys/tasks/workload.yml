@@ -1,13 +1,13 @@
 ---
 - name: Read bastion SSH public key
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_bastion_student_ssh_keys_bastion_host }}"
   become: true
   ansible.builtin.slurp:
     src: "{{ ocp4_workload_bastion_student_ssh_keys_public_key }}"
   register: _bastion_ssh_pubkey
 
 - name: Ensure student user .ssh directory exists
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_bastion_student_ssh_keys_bastion_host }}"
   become: true
   ansible.builtin.file:
     path: "~{{ ocp4_workload_bastion_student_ssh_keys_user }}/.ssh"
@@ -17,7 +17,7 @@
     mode: u=rwx,go=
 
 - name: Copy SSH private key to student user .ssh directory
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_bastion_student_ssh_keys_bastion_host }}"
   become: true
   ansible.builtin.copy:
     src: "{{ ocp4_workload_bastion_student_ssh_keys_private_key }}"
@@ -28,7 +28,7 @@
     remote_src: true
 
 - name: Copy SSH public key to student user .ssh directory
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_bastion_student_ssh_keys_bastion_host }}"
   become: true
   ansible.builtin.copy:
     src: "{{ ocp4_workload_bastion_student_ssh_keys_public_key }}"
@@ -39,7 +39,7 @@
     remote_src: true
 
 - name: Deploy SSH config for student user from template
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_bastion_student_ssh_keys_bastion_host }}"
   become: true
   ansible.builtin.template:
     src: ssh_config.j2

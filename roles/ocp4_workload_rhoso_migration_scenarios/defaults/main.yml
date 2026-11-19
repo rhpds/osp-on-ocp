@@ -10,6 +10,12 @@ ocp4_workload_rhoso_migration_scenarios_phase_job_templates: true
 # ============================================================================
 ocp4_workload_rhoso_migration_scenarios_guid: "{{ guid }}"
 
+# Inventory host for bastion-side tasks.
+# V1 runs the workloads play on the bastion (inventory host named 'bastion');
+# V2 (agnosticd-v2) runs workloads on localhost, so resolve via the group.
+ocp4_workload_rhoso_migration_scenarios_bastion_host: >-
+  {{ groups['bastions'][0] | default('bastion') }}
+
 # ============================================================================
 # AAP configuration
 # ============================================================================

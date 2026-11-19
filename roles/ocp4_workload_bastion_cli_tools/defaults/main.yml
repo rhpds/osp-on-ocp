@@ -1,0 +1,54 @@
+---
+# Port of the AgnosticD V1 role `install-command-line-tools`
+# (agnosticd/ansible/roles/install-command-line-tools), which has no
+# equivalent in agnosticd-v2 or rhpds/core_workloads.
+#
+# V1 ran the workloads play on the bastion itself; V2 runs workloads on
+# localhost, so every task here delegates to the bastion.
+
+# Inventory host to install the CLI tools on.
+ocp4_workload_bastion_cli_tools_bastion_host: >-
+  {{ groups['bastions'][0] | default('bastion') }}
+
+# -------------------------------------------------
+# GitHub CLI
+# -------------------------------------------------
+ocp4_workload_bastion_cli_tools_github_cli: true
+ocp4_workload_bastion_cli_tools_github_cli_package_url: https://cli.github.com/packages/rpm
+# Signing key rotated 2026-09-05 (old 0x23F3D4EA75716059 expired)
+ocp4_workload_bastion_cli_tools_github_cli_package_gpgkey: >-
+  https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x5612B36462313325
+
+# -------------------------------------------------
+# Tekton CLI
+# -------------------------------------------------
+ocp4_workload_bastion_cli_tools_tektoncd_cli: true
+ocp4_workload_bastion_cli_tools_tektoncd_installer_url: >-
+  https://github.com/tektoncd/cli/releases/download/v0.32.0/tkn_0.32.0_Linux_x86_64.tar.gz
+
+# -------------------------------------------------
+# OpenShift CLI
+# -------------------------------------------------
+# Off by default: host_ocp4_assisted_installer already installs an `oc`
+# matching the cluster version on the bastion. The V1 role defaulted this
+# to true and pulled "latest" from the openshift-v4 mirror, which would
+# overwrite the OCP 5.x client with a 4.x one.
+ocp4_workload_bastion_cli_tools_openshift_cli: false
+ocp4_workload_bastion_cli_tools_openshift_cli_installer_url: >-
+  https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest/openshift-client-linux.tar.gz
+
+# -------------------------------------------------
+# Helm CLI
+# -------------------------------------------------
+ocp4_workload_bastion_cli_tools_helm_cli: true
+ocp4_workload_bastion_cli_tools_helm_cli_installer_url: >-
+  https://mirror.openshift.com/pub/openshift-v4/clients/helm/latest/helm-linux-amd64.tar.gz
+
+# -------------------------------------------------
+# ROSA CLI
+# -------------------------------------------------
+ocp4_workload_bastion_cli_tools_rosa_cli: false
+ocp4_workload_bastion_cli_tools_rosa_version: latest
+ocp4_workload_bastion_cli_tools_rosa_installer_url: >-
+  https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/rosa/{{
+    ocp4_workload_bastion_cli_tools_rosa_version }}/rosa-linux.tar.gz

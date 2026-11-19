@@ -45,4 +45,4 @@
     - "OpenStack namespace: {{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
     - "Operators namespace: {{ ocp4_workload_rhoso_deployment_openstack_operators_namespace }}"
     - ""
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

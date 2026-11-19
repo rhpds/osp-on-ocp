@@ -1,22 +1,38 @@
 ---
 # Run the RHOSO deployment from the bastion where:
 # - cluster-internal hostnames (nfsserver, compute01) resolve via cluster DNS
-# - /opt/virtualenvs/k8s has ansible + kubernetes.core + community.crypto
+# - the venv in ocp4_workload_rhoso_deployment_bastion_venv has ansible +
+#   kubernetes.core + community.crypto
 # - ~/.kube/config is available for kubernetes.core modules
-# - SSH key ~/.ssh/<guid>key.pem can reach internal VMs directly
+# - the bastion SSH key can reach internal VMs directly
+#
+# The key file name differs between AgnosticD versions (V1: <guid>key.pem,
+# V2: whatever the agnosticd-v2 'bastion' role generated), so it is resolved
+# through ocp4_workload_rhoso_deployment_bastion_ssh_private_key and copied
+# to cloud-user under the same base name.
+
+- name: Ensure the bastion has the ansible virtualenv (no-op on AgnosticD V1)
+  ansible.builtin.include_tasks: ensure_bastion_venv.yml
+
+- name: Resolve bastion SSH key file names
+  ansible.builtin.set_fact:
+    _ocp4_workload_rhoso_deployment_key_name: >-
+      {{ ocp4_workload_rhoso_deployment_bastion_ssh_private_key | basename }}
+    _ocp4_workload_rhoso_deployment_pubkey_name: >-
+      {{ ocp4_workload_rhoso_deployment_bastion_ssh_public_key | basename }}
 
 - name: Create execution directory on bastion
   ansible.builtin.file:
     path: /tmp/rhoso-exec
     state: directory
     mode: "0755"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Copy role to bastion
   ansible.builtin.copy:
     src: "{{ role_path }}/"
     dest: /tmp/rhoso-exec/role/
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Ensure cloud-user .ssh directory exists
   ansible.builtin.file:
@@ -26,40 +42,51 @@
     owner: cloud-user
     group: cloud-user
   become: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Copy VM SSH private key to cloud-user .ssh for bastion playbook access
   ansible.builtin.copy:
-    src: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
-    dest: "/home/cloud-user/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
+    src: "{{ ocp4_workload_rhoso_deployment_bastion_ssh_private_key }}"
+    dest: "/home/cloud-user/.ssh/{{ _ocp4_workload_rhoso_deployment_key_name }}"
     remote_src: true
     mode: "0600"
     owner: cloud-user
     group: cloud-user
   become: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
-- name: Derive public key from private key if .pub file does not exist
-  ansible.builtin.shell:
-    cmd: >-
-      test -f ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub ||
-      ssh-keygen -y -f ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem
-      > ~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub
+- name: Check whether a public key exists next to the bastion private key
+  ansible.builtin.stat:
+    path: "{{ ocp4_workload_rhoso_deployment_bastion_ssh_public_key }}"
   become: true
-  become_user: cloud-user
-  delegate_to: bastion
-  changed_when: false
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
+  register: _ocp4_workload_rhoso_deployment_pubkey_stat
 
 - name: Copy VM SSH public key to cloud-user .ssh
+  when: _ocp4_workload_rhoso_deployment_pubkey_stat.stat.exists
   ansible.builtin.copy:
-    src: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub"
-    dest: "/home/cloud-user/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pub"
+    src: "{{ ocp4_workload_rhoso_deployment_bastion_ssh_public_key }}"
+    dest: "/home/cloud-user/.ssh/{{ _ocp4_workload_rhoso_deployment_pubkey_name }}"
     remote_src: true
     mode: "0644"
     owner: cloud-user
     group: cloud-user
   become: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
+
+# Derived from the copy already in cloud-user's ~/.ssh so this works no
+# matter which user owns the original key (V1: cloud-user, V2: possibly root).
+- name: Derive public key from the copied private key when none exists
+  when: not _ocp4_workload_rhoso_deployment_pubkey_stat.stat.exists
+  ansible.builtin.shell:
+    cmd: >-
+      ssh-keygen -y
+      -f /home/cloud-user/.ssh/{{ _ocp4_workload_rhoso_deployment_key_name }}
+      > /home/cloud-user/.ssh/{{ _ocp4_workload_rhoso_deployment_pubkey_name }}
+    creates: "/home/cloud-user/.ssh/{{ _ocp4_workload_rhoso_deployment_pubkey_name }}"
+  become: true
+  become_user: cloud-user
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Write inventory to bastion
   ansible.builtin.copy:
@@ -74,7 +101,7 @@
       {{ ocp4_workload_rhoso_deployment_nfs_server_host }}
       {{ ocp4_workload_rhoso_deployment_compute_host }} ansible_user={{ ocp4_workload_rhoso_deployment_vm_ssh_user }} ansible_ssh_private_key_file={{ ocp4_workload_rhoso_deployment_vm_ssh_key }} ansible_ssh_common_args='-o StrictHostKeyChecking=no'
     dest: /tmp/rhoso-exec/inventory
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Write vars file to bastion
   vars:
@@ -92,7 +119,7 @@
       {{ ns.d | to_json | from_json | to_nice_yaml }}
     dest: /tmp/rhoso-exec/vars.yml
   no_log: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Write complex vars file with properly evaluated dicts
   ansible.builtin.copy:
@@ -113,7 +140,7 @@
       {% endfor %}
       {% endif %}
     dest: /tmp/rhoso-exec/complex_vars.yml
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Write playbook to bastion
   ansible.builtin.copy:
@@ -121,7 +148,10 @@
       ---
       # This playbook runs workload.yml directly (NOT via the role)
       # to avoid triggering run_from_bastion.yml again (infinite loop).
-      # 'bastion' is ansible_connection=local so delegate_to: bastion runs locally.
+      # The inner inventory host is named 'bastion' with
+      # ansible_connection=local, and the command below pins
+      # ocp4_workload_rhoso_deployment_bastion_host=bastion so the inner run
+      # delegates locally instead of to the outer run's inventory hostname.
       # Handlers are defined inline since role handlers are not loaded
       # when using include_tasks without a full role context.
       - name: RHOSO Deployment (running from bastion)
@@ -136,7 +166,7 @@
         - name: Run RHOSO workload tasks
           ansible.builtin.include_tasks: /tmp/rhoso-exec/role/tasks/workload.yml
     dest: /tmp/rhoso-exec/playbook.yml
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Run deployment from bastion using k8s virtualenv
   ansible.builtin.command:
@@ -149,8 +179,9 @@
       -e ACTION={{ ACTION }}
       -e guid={{ guid }}
       -e ocp4_workload_rhoso_deployment_role_files_path=/tmp/rhoso-exec/role/files
+      -e ocp4_workload_rhoso_deployment_bastion_host=bastion
   register: _ocp4_workload_rhoso_deployment_bastion_run
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
   environment:
     KUBECONFIG: "~/.kube/config"
 
@@ -163,4 +194,4 @@
     path: /tmp/rhoso-exec
     state: absent
   become: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"

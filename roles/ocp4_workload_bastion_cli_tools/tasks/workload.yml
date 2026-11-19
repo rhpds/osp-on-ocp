@@ -1,0 +1,120 @@
+---
+- name: Install command line tools on the bastion
+  become: true
+  delegate_to: "{{ ocp4_workload_bastion_cli_tools_bastion_host }}"
+  block:
+
+  # -----------------------------------------------------------------
+  # GitHub CLI
+  # -----------------------------------------------------------------
+  - name: Add the GitHub CLI repository
+    when: ocp4_workload_bastion_cli_tools_github_cli | bool
+    ansible.builtin.yum_repository:
+      name: github-cli
+      description: Packages for the GitHub CLI
+      file: github-cli
+      baseurl: "{{ ocp4_workload_bastion_cli_tools_github_cli_package_url }}"
+      gpgkey: "{{ ocp4_workload_bastion_cli_tools_github_cli_package_gpgkey }}"
+      gpgcheck: true
+      enabled: true
+
+  - name: Install the GitHub CLI
+    when: ocp4_workload_bastion_cli_tools_github_cli | bool
+    ansible.builtin.package:
+      name: gh
+      state: present
+
+  - name: Remove the GitHub CLI repository definition
+    when: ocp4_workload_bastion_cli_tools_github_cli | bool
+    ansible.builtin.file:
+      path: /etc/yum.repos.d/github-cli.repo
+      state: absent
+
+  # -----------------------------------------------------------------
+  # Tekton CLI
+  # -----------------------------------------------------------------
+  - name: Install the Tekton CLI
+    when: ocp4_workload_bastion_cli_tools_tektoncd_cli | bool
+    ansible.builtin.unarchive:
+      src: "{{ ocp4_workload_bastion_cli_tools_tektoncd_installer_url }}"
+      remote_src: true
+      dest: /usr/local/bin
+      mode: "0755"
+      owner: root
+      group: root
+    register: r_tkn
+    until: r_tkn is success
+    retries: 10
+    delay: 30
+
+  # -----------------------------------------------------------------
+  # OpenShift CLI — normally already installed by the installer role
+  # -----------------------------------------------------------------
+  - name: Install the OpenShift CLI
+    when: ocp4_workload_bastion_cli_tools_openshift_cli | bool
+    ansible.builtin.unarchive:
+      src: "{{ ocp4_workload_bastion_cli_tools_openshift_cli_installer_url }}"
+      remote_src: true
+      dest: /usr/bin
+      mode: "0755"
+      owner: root
+      group: root
+    register: r_oc
+    until: r_oc is success
+    retries: 10
+    delay: 30
+
+  - name: Create the OpenShift bash completion file
+    when: ocp4_workload_bastion_cli_tools_openshift_cli | bool
+    ansible.builtin.shell:
+      cmd: /usr/bin/oc completion bash >/etc/bash_completion.d/openshift
+      creates: /etc/bash_completion.d/openshift
+
+  # -----------------------------------------------------------------
+  # Helm CLI
+  # -----------------------------------------------------------------
+  - name: Install the Helm CLI
+    when: ocp4_workload_bastion_cli_tools_helm_cli | bool
+    ansible.builtin.unarchive:
+      src: "{{ ocp4_workload_bastion_cli_tools_helm_cli_installer_url }}"
+      remote_src: true
+      dest: /usr/local/bin
+      mode: "0755"
+      owner: root
+      group: root
+    register: r_helm
+    until: r_helm is success
+    retries: 10
+    delay: 30
+
+  - name: Link the downloaded helm binary to helm
+    when: ocp4_workload_bastion_cli_tools_helm_cli | bool
+    ansible.builtin.file:
+      src: /usr/local/bin/helm-linux-amd64
+      dest: /usr/local/bin/helm
+      owner: root
+      group: root
+      state: link
+
+  - name: Create the Helm bash completion file
+    when: ocp4_workload_bastion_cli_tools_helm_cli | bool
+    ansible.builtin.shell:
+      cmd: /usr/local/bin/helm completion bash >/etc/bash_completion.d/helm
+      creates: /etc/bash_completion.d/helm
+
+  # -----------------------------------------------------------------
+  # ROSA CLI
+  # -----------------------------------------------------------------
+  - name: Install the ROSA CLI
+    when: ocp4_workload_bastion_cli_tools_rosa_cli | bool
+    ansible.builtin.unarchive:
+      src: "{{ ocp4_workload_bastion_cli_tools_rosa_installer_url }}"
+      remote_src: true
+      dest: /usr/local/bin
+      mode: "0755"
+      owner: root
+      group: root
+    register: r_rosa
+    until: r_rosa is success
+    retries: 10
+    delay: 30

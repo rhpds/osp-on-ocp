@@ -18,7 +18,7 @@
   ansible.builtin.stat:
     path: "~/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
   register: _ocp4_workload_migration_centos_image_file
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Download CentOS Stream 10 qcow2 image
   ansible.builtin.get_url:
@@ -26,7 +26,7 @@
     dest: "~/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
     mode: '0644'
   when: not _ocp4_workload_migration_centos_image_file.stat.exists
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 # --- Copy resources to openstackclient pod ---
 
@@ -37,7 +37,7 @@
     remote_path: "/home/cloud-admin/bastion_{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_guid }}.pub"
     local_path: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_public_key }}"
     state: to_pod
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Copy CentOS Stream 10 image to openstackclient pod
   kubernetes.core.k8s_cp:
@@ -46,7 +46,7 @@
     remote_path: "/home/cloud-admin/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
     local_path: "~/CentOS-Stream-GenericCloud-10-latest.x86_64.qcow2"
     state: to_pod
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 # --- Create OpenStack resources via setup script ---
 
@@ -143,7 +143,7 @@
       openstack server add floating ip conversion-host $CONVERSION_HOST_IP 2>/dev/null || true
 
       openstack server list
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Copy setup script to openstackclient pod
   kubernetes.core.k8s_cp:
@@ -152,7 +152,7 @@
     remote_path: "/home/cloud-admin/setup-conversion-host.sh"
     local_path: "~/setup-conversion-host.sh"
     state: to_pod
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Execute conversion host setup in openstackclient pod
   kubernetes.core.k8s_exec:
@@ -160,7 +160,7 @@
     pod: openstackclient
     command: /bin/bash /home/cloud-admin/setup-conversion-host.sh
   register: _ocp4_workload_migration_setup_output
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Display setup output
   ansible.builtin.debug:
@@ -175,7 +175,7 @@
     delay: 10
     timeout: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_ssh_wait_timeout }}"
     state: started
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Install VMware VIX disklib on conversion host
   ansible.builtin.shell: |
@@ -184,7 +184,26 @@
       'sudo dnf install -y https://repo.storware.eu/vprotect/current/el9/vmware-vix-disklib-8.0.0-20521017.el9.x86_64.rpm'
   register: _ocp4_workload_migration_vix_install
   changed_when: "'Installing' in _ocp4_workload_migration_vix_install.stdout or 'Installed' in _ocp4_workload_migration_vix_install.stdout"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
+
+- name: Download VMDK disks from fvmw to conversion host
+  vars:
+    _disk_name: "{{ item | regex_replace('-' ~ ocp4_workload_rhoso_migration_toolkit_aap_setup_fvmw_vcenter_user ~ '$', '') }}"
+    _local_disk_path: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_local_disk_path }}"
+  ansible.builtin.shell: |
+    ssh -o StrictHostKeyChecking=no -i {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key }} \
+      cloud-user@{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }} \
+      'sudo mkdir -p {{ _local_disk_path }} && \
+       sudo curl -sk -u {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_fvmw_vcenter_user }}:{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_fvmw_vcenter_user_password }} \
+         "https://{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_fvmw_hostname }}/folder/{{ item }}/{{ _disk_name }}.vmdk?dcPath=RS00&dsName=workloadshare" \
+         -o {{ _local_disk_path }}/{{ _disk_name }}.vmdk && \
+       extent=$(sudo grep -a -oP "(?<=FLAT \")[^\"]+" {{ _local_disk_path }}/{{ _disk_name }}.vmdk) && \
+       sudo curl -sk -u {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_fvmw_vcenter_user }}:{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_fvmw_vcenter_user_password }} \
+         "https://{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_fvmw_hostname }}/folder/{{ item }}/${extent}?dcPath=RS00&dsName=workloadshare" \
+         -o {{ _local_disk_path }}/${extent}'
+  loop: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_vms_to_migrate }}"
+  register: _ocp4_workload_migration_vmdk_download
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"
 
 - name: Save conversion host information
   ansible.builtin.copy:
@@ -198,4 +217,4 @@
       Image: CentOS Stream 10
       Flavor: migrate (4GB RAM, 2 vCPU, 35GB disk)
       SSH: ssh -i {{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_ssh_private_key }} cloud-user@{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_conversion_host_ip }}
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_toolkit_aap_setup_bastion_host }}"

@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: ocp4_workload_bastion_cli_tools
+  author:
+  - Pedro Navarro Perez <pperez@redhat.com>
+  description: |
+    Installs command line tools (GitHub CLI, Tekton CLI, Helm, optionally
+    the OpenShift and ROSA CLIs) on the lab bastion. Port of the AgnosticD
+    V1 role install-command-line-tools, which has no AgnosticD V2
+    equivalent. Every task delegates to the bastion because V2 runs
+    workloads on localhost.
+  license: GPL-2.0-or-later
+  min_ansible_version: "2.9"
+  platforms: []
+  galaxy_tags:
+  - bastion
+  - cli
+  - tools
+dependencies: []

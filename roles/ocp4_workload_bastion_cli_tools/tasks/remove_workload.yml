@@ -1,0 +1,8 @@
+---
+# Nothing to remove: the CLI binaries live on the bastion VM, which is
+# deleted with the sandbox namespace.
+- name: Nothing to remove for the bastion CLI tools
+  ansible.builtin.debug:
+    msg: >-
+      ocp4_workload_bastion_cli_tools installs binaries on the bastion VM only;
+      they are removed when the environment is destroyed.

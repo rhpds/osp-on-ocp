@@ -16,9 +16,29 @@ ocp4_workload_rhoso_deployment_phase_optional_services: false
 # Lab environment
 # ============================================================================
 ocp4_workload_rhoso_deployment_guid: "{{ guid }}"
+
+# Inventory host used by every bastion-side task (delegate_to).
+# AgnosticD V1 runs the workloads play on `hosts: bastions`, where the
+# inventory host is literally named 'bastion'. AgnosticD V2 runs workloads
+# on localhost, so the host has to be resolved through the group.
+# The nested playbook written by run_from_bastion.yml always names its
+# local host 'bastion' and overrides this via -e.
+ocp4_workload_rhoso_deployment_bastion_host: >-
+  {{ groups['bastions'][0] | default('bastion') }}
+
+# Bastion SSH key pair.
+# V2: the agnosticd-v2 'bastion' role generates the key on the bastion and
+#     registers the path as the host fact bastion_ssh_key_path.
+# V1: the key is ~/.ssh/<guid>key.pem.
 # Note: use tilde concatenation — '{{ guid }}' inside default() string is NOT evaluated
-ocp4_workload_rhoso_deployment_bastion_ssh_private_key: "{{ bastion_ssh_key_path | default('~/.ssh/' ~ ocp4_workload_rhoso_deployment_guid ~ 'key.pem') }}"
-ocp4_workload_rhoso_deployment_bastion_ssh_public_key: "{{ bastion_ssh_pubkey_path | default('~/.ssh/' ~ ocp4_workload_rhoso_deployment_guid ~ 'key.pub') }}"
+ocp4_workload_rhoso_deployment_bastion_ssh_private_key: >-
+  {{ (hostvars[ocp4_workload_rhoso_deployment_bastion_host] | default({})).get('bastion_ssh_key_path')
+     | default(bastion_ssh_key_path
+               | default('~/.ssh/' ~ ocp4_workload_rhoso_deployment_guid ~ 'key.pem'), true) }}
+ocp4_workload_rhoso_deployment_bastion_ssh_public_key: >-
+  {{ (hostvars[ocp4_workload_rhoso_deployment_bastion_host] | default({})).get('bastion_ssh_pubkey_path')
+     | default(bastion_ssh_pubkey_path
+               | default('~/.ssh/' ~ ocp4_workload_rhoso_deployment_guid ~ 'key.pub'), true) }}
 
 # ============================================================================
 # Delegation hosts — inventory hostnames for delegate_to.
@@ -39,12 +59,34 @@ ocp4_workload_rhoso_deployment_bastion_working_dir: "/tmp/openstack-files"
 # /tmp/rhoso-exec/role/files via the -e argument.
 ocp4_workload_rhoso_deployment_role_files_path: "{{ role_path }}/files"
 
-# SSH key on bastion for connecting to internal VMs (nfsserver, compute01)
-ocp4_workload_rhoso_deployment_vm_ssh_key: "~/.ssh/{{ ocp4_workload_rhoso_deployment_guid }}key.pem"
+# SSH key used on the bastion to reach the internal VMs (nfsserver, compute01).
+# run_from_bastion.yml copies the bastion key into cloud-user's ~/.ssh under
+# the same file name, so derive it rather than hardcoding the V1 name.
+ocp4_workload_rhoso_deployment_vm_ssh_key: >-
+  ~/.ssh/{{ ocp4_workload_rhoso_deployment_bastion_ssh_private_key | basename }}
 ocp4_workload_rhoso_deployment_vm_ssh_user: "cloud-user"
 
-# Virtualenv on bastion with ansible + kubernetes.core + community.crypto
+# Virtualenv on bastion with ansible + kubernetes.core + community.crypto.
+# AgnosticD V1 creates it (host_virtualenv role, called from the ocp4-cluster
+# config's pre_software.yml). AgnosticD V2 has no equivalent role, so
+# ensure_bastion_venv.yml creates it when it is missing.
 ocp4_workload_rhoso_deployment_bastion_venv: "/opt/virtualenvs/k8s"
+ocp4_workload_rhoso_deployment_bastion_venv_python: /usr/bin/python3
+ocp4_workload_rhoso_deployment_bastion_venv_prereqs:
+- gcc
+- python3
+- python3-devel
+- python3-pip
+# The 'ansible' package is installed rather than 'ansible-core' because the
+# nested playbook needs the bundled kubernetes.core, community.crypto and
+# ansible.posix collections.
+ocp4_workload_rhoso_deployment_bastion_venv_packages:
+- ansible
+- kubernetes
+- openshift
+- jmespath
+- passlib
+- dnspython
 
 # ============================================================================
 # Content files — OpenStack YAML manifests shipped in the role's files/ dir.

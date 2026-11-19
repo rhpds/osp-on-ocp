@@ -11,9 +11,9 @@
     validate_certs: false
   ignore_errors: true
   when: "'basic_ha_proxy_migration' in ocp4_workload_rhoso_migration_scenarios_list"
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_scenarios_bastion_host }}"
 
 - name: Report removal completion
   ansible.builtin.debug:
     msg: "Migration scenario job templates have been removed."
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_migration_scenarios_bastion_host }}"

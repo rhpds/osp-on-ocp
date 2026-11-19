@@ -7,7 +7,7 @@
     namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Delete OpenStack Data Plane NodeSet
   kubernetes.core.k8s:
@@ -16,7 +16,7 @@
     namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Delete OpenStack Control Plane
   kubernetes.core.k8s:
@@ -26,7 +26,7 @@
     namespace: "{{ ocp4_workload_rhoso_deployment_openstack_namespace }}"
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Delete OpenStack secrets
   kubernetes.core.k8s:
@@ -44,7 +44,7 @@
   - subscription-manager
   - redhat-registry
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Delete openstack namespace
   kubernetes.core.k8s:
@@ -53,7 +53,7 @@
     kind: Namespace
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Delete openstack-operators namespace
   kubernetes.core.k8s:
@@ -62,7 +62,7 @@
     kind: Namespace
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Delete MetalLB instance
   kubernetes.core.k8s:
@@ -72,7 +72,7 @@
     namespace: metallb-system
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Delete NMState instance
   kubernetes.core.k8s:
@@ -81,7 +81,7 @@
     name: nmstate
     state: absent
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Delete NFS PersistentVolume and StorageClass
   kubernetes.core.k8s:
@@ -97,15 +97,15 @@
     kind: StorageClass
     name: nfs
   ignore_errors: true
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Clean up working directory on bastion
   ansible.builtin.file:
     path: "{{ ocp4_workload_rhoso_deployment_bastion_working_dir }}"
     state: absent
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
 
 - name: Report removal completion
   ansible.builtin.debug:
     msg: "RHOSO deployment resources have been removed."
-  delegate_to: bastion
+  delegate_to: "{{ ocp4_workload_rhoso_deployment_bastion_host }}"
